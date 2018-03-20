@@ -1,6 +1,4 @@
-upcoming:
-=========
-+ change encoding
-+ 
-
-* concatInterjections moved to ctk.plpr
+v0.4.0
+======
+* birth given to frappp (a package formerly known as ctk.plpr)
+* content of TODO file moved to issues of GermaParl package 

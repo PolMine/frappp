@@ -43,7 +43,7 @@ teiXpath <- list(
 save(
   agendaItemTypes,
   teiXpath,
-  file = "~/Lab/gitlab/ctk.plpr/data/PlPr.RData"
+  file = "~/Lab/gitlab/frappp/data/PlPr.RData"
   )
 ```
 

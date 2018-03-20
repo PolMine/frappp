@@ -1,0 +1,9 @@
+Explanation of RData files in this directory
+============================================
+
+The files in this directory are generated from the file 'data.Rmd' in the 'data-raw'-directory.
+
+File 'PlPr.RData'
+-----------------
+- teiXpath: named list with xpath expressions
+- agendaItemTypes: named character vector; names are in english, values in German  

@@ -6,6 +6,18 @@
 #' @field chunks class \code{"list"} 
 #' @field xml class \code{"character"}
 #' @field speakerRegex speakerRegex (list)
+#' @section Methods:
+#' \describe{
+#'   \item{\code{$new()}}{initialize method for a new object of class \code{PlenaryProtocol};
+#'   does nothing for class \code{PlenaryProtocol}, and needs to be defined for classes inheriting
+#'   from \code{PlenaryProtocol}}
+#'   \item{\code{$preprocessing(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))}}{
+#'   the method will (a) remove empty lines, (b) remove leading and trailing whitespace, (c) carry out replacements, and 
+#'   (d) carry out document-specific functions}
+#'   \item{\code{$getMetadata()}}{extract metadata from document; the result will be stored in the field \code{metadata}}
+#'   \item{\code{$getDebate()}}{remove leading and trailing noise before the "actual debate" (such as table of contents, or annexes)}
+#'   \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text document into a list of chunks by applying regular expressions for speakers}
+#'}
 #' @export PlenaryProtocol
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
@@ -43,32 +55,30 @@ PlenaryProtocol <- R6Class(
 		# methods 
 		
 		initialize = function(){
+		  warning("needs to be implemented for specific types of protocols")
 		},
 		
-		preprocessing = function(replace = list()){
-		  txt <- self$txt
-		  Encoding(txt) <- "UTF-8"
+		
+		preprocessing = function(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))){
 		  
 		  # remove empty lines
-		  emptyLines <- grep("^\\s*$", txt)
-		  if (length(emptyLines) > 0) txt <- txt[-emptyLines]
+		  emptyLines <- grep("^\\s*$", self$txt)
+		  if (length(emptyLines) > 0) self$txt <- self$txt[-emptyLines]
 		  
-		  txt <- gsub("[\025]", "\u00A7", txt)
-		  txt <- gsub("\u00A0", " ", txt) # removes NO-BREAK SPACE, e.g. in B\u00DCNDNIS 90/DIE GR\u00DCNEN
-		  txt <- gsub("\a", "\n", txt)
-		  txt <- gsub("^\\s*(.*)\\s*$", "\\1", txt) # remove leading and trailing whitespace
-		  txtOne <- paste(txt, collapse = "BREAK")
-		  txtOne <- gsub("CDU/BREAKCSU", "CDU/CSU", txtOne)
-		  txtOne <- gsub("B\u00DCNDNIS\\s+90/BREAKD[iI][eE]\\s+GR\u00DCNEN", "B\u00DCNDNIS 90/DIE GR\u00DCNEN", txtOne)
-		  txtOne <- gsub("B\u00DCNDNIS\\s+90/DIE\\s+GR\u00DC-BREAKNEN", "B\u00DCNDNIS 90/DIE GR\u00DCNEN", txtOne)
-		  txt <- strsplit(txtOne, "BREAK")[[1]]
-		  txt <- gsub("Nr\\.(\\d)", "Nr. \\1", txt)
-		  txt <- gsub("Abs\\.(\\d)", "Abs. \\1", txt)
-		  txt <- gsub("([a-z])\\.\\d+", "\\1.", txt)
-		  if (self$filename %in% names(self$preprocessingFunctions)){
-		    txt <- self$preprocessingFunctions[[self$filename]](txt)
+		  # remove leading and trailing whitespace
+		  self$txt <- gsub("^\\s*(.*)\\s*$", "\\1", self$txt)
+		  
+		  # carry out replacements
+		  for (replacement in replacements){
+		    self$txt <- gsub(replacement[1], replacement[2], self$txt)
 		  }
-		  self$txt <- txt
+		  
+		  # execute document-specific preprocessing functions
+		  if (self$filename %in% names(self$preprocessingFunctions)){
+		    txt <- self$preprocessingFunctions[[self$filename]](self$txt)
+		  }
+		  
+		  invisible(self$txt)
 		},
 		
 		
@@ -108,7 +118,7 @@ PlenaryProtocol <- R6Class(
 		  self$txt <- txt[c((startOfDebate[1] + 1):(endOfDebate[1]-1))]
 		},
 		
-		splitBySpeakers = function(maxLengthWho=60){
+		splitBySpeakers = function(maxLengthWho = 60){
 		  txt <- self$txt
 		  speakerRegexList <- self$speakerRegex
 		  speakerMismatch <- self$speakerMismatch
