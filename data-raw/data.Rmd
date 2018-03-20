@@ -1,0 +1,49 @@
+---
+title: "Data for Parsing Plenary Protocols"
+author: "Andreas Blaette"
+date: "2017-12-10"
+output: html_document
+---
+
+# Agenda Items
+
+```{r}
+agendaItemTypes <- c(
+  government_declaration = "Erkl\u00E4rung der Bundesregierung",
+  government_declaration = "Regierungserkl\u00E4rung",
+  debate = "Debatte",
+  question_time = "Fragestunde",
+  interrogation = "Befragung",
+  election = "Wahlvorschlag",
+  recent_issues = "Aktuelle Stunde",
+  debate = "Beratung",
+  budget = "Einzelplan",
+  point_of_order = "Gesch\u00E4ftsordnungsdebatte"
+)
+```
+
+```{r}
+teiXpath <- list(
+  title = "//TEI/teiHeader/fileDesc/titleStmt/title",
+  legislativePeriod = "//TEI/teiHeader/fileDesc/titleStmt/legislativePeriod",
+  sessionNo = "//TEI/teiHeader/fileDesc/titleStmt/sessionNo",
+  date = "//TEI/teiHeader/fileDesc/publicationStmt/date",
+  publisher = "//TEI/teiHeader/fileDesc/publicationStmt/publisher",
+  url = "//TEI/teiHeader/fileDesc/sourceDesc/url",
+  filetype = "//TEI/teiHeader/fileDesc/sourceDesc/filetype",
+  retrievalDate = "//TEI/teiHeader/fileDesc/sourceDesc/date",
+  package = "//TEI/teiHeader/fileDesc/editionStmt/edition/package",
+  version = "//TEI/teiHeader/fileDesc/editionStmt/edition/version",
+  birthday = "//TEI/teiHeader/fileDesc/editionStmt/edition/birthday"
+)
+```
+
+
+```{r}
+save(
+  agendaItemTypes,
+  teiXpath,
+  file = "~/Lab/gitlab/ctk.plpr/data/PlPr.RData"
+  )
+```
+

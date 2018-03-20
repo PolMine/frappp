@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<TEI>
+  <teiHeader>
+		<fileDesc>
+			<titleStmt>
+				<title></title>
+				<legislativePeriod/>
+        <sessionNo/>
+			</titleStmt>
+			<editionStmt>
+			  <edition>
+			    <package></package>
+			    <version></version>
+			    <birthday></birthday>
+			  </edition>
+			</editionStmt>
+			<publicationStmt>
+				<publisher></publisher>
+				<date when=""></date>
+				<page></page>
+			</publicationStmt>
+			<sourceDesc>
+        <filetype></filetype>
+				<url></url>
+        <date></date>
+			</sourceDesc>
+		</fileDesc>
+		<encodingDesc>
+			<projectDesc>PolMine-Project (www.polmine.de)</projectDesc>
+			<samplingDecl></samplingDecl>
+			<editorialDecl></editorialDecl>
+		</encodingDesc>
+		<profileDesc></profileDesc>
+		<revisionDesc></revisionDesc>
+	</teiHeader>
+	<text>
+		<body></body>
+	</text>
+</TEI>
