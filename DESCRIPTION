@@ -1,11 +1,11 @@
-Package: ctk.plpr
+Package: frappp
 Type: Package
-Title: ctk extension for processing plenary protocols
-Version: 0.3.2
-Date: 2017-12-10
+Title: Framework for Parsing Plenary Protocols
+Version: 0.4.0
+Date: 2018-03-20
 Author: Andreas Blaette
 Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
-Description: Framework for the XMLification of plenary protocols.
+Description: Framework for the XMLification (Parsing) of Plenary Protocols.
 Depends:
     methods,
     ctk,
@@ -17,7 +17,7 @@ Imports:
 LazyData: yes
 License: no distribution without the author's permission
 Collate:
-    'ctk.plpr_package.R'
+    'frappp_package.R'
     'regexContextInChunks_method.R'
     'PlenaryProtocol.R'
     'PlenaryProtocolPipe.R'
