@@ -35,18 +35,18 @@ PlenaryProtocolPipe <- R6::R6Class(
     protocolclass = "character",
     xslFile = "character",
 
-    initialize = function(dir, downloadReportFile, protocolclass){
+    initialize = function(dir, downloadReportFile, protocolclass = "PlenaryProtocol"){
       self$dir <- dir
       self$downloadReportFile <- downloadReportFile
       self$protocolclass <- protocolclass
     },
     
-    getDocs = function(targetDir, lp, first=1, makeUrl=quote(sprintf()), fmtFilename="BT_%02d_%03d.pdf"){
+    getDocs = function(targetDir, lp, first=1, makeUrl = quote(sprintf()), fmtFilename="BT_%02d_%03d.pdf"){
       .getFilesOnDisk <- function(reportFile){
         if (file.exists(reportFile)){
           downloadTable <- read.table(
-            file=reportFile, stringsAsFactors=FALSE,
-            quote="", sep="\t"
+            file = reportFile, stringsAsFactors = FALSE,
+            quote = "", sep = "\t"
           )
           filesOnDisk <- downloadTable[,1]
         } else {
@@ -129,6 +129,22 @@ PlenaryProtocolPipe <- R6::R6Class(
         ), ...
       )
     },
+    
+    
+    regexContextInChunks <- function(sourceDir, regex, ncharContext, protocolclass = "PlenaryProtocol", ...){ 
+      data <- lapply(
+        list.files(file.path(self$dir, sourceDir), full.names = FALSE),
+        function(filename){
+          Protocol <- do.call(protocollclass, args = list(filename = filename))
+          Protocol$txt <- readLines(filename)
+          Protocol$preprocessing()
+          Protocol$regexContextInChunks(regex = regex)
+          Protocol$metadata
+        }
+      )
+      do.call(rbind, data)
+    },
+    
     
     xslt = function(sourceDir, targetDir, xslFile = system.file("xsl/plpr.xsl", package = "ctk.plpr"), ...){
       checkDirs(.Object,sourceDir, targetDir)

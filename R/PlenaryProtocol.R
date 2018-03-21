@@ -17,6 +17,13 @@
 #'   \item{\code{$getMetadata()}}{extract metadata from document; the result will be stored in the field \code{metadata}}
 #'   \item{\code{$getDebate()}}{remove leading and trailing noise before the "actual debate" (such as table of contents, or annexes)}
 #'   \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text document into a list of chunks by applying regular expressions for speakers}
+#'   \item{\code{$concatenateMultilineInterjections()}}{}
+#'   \item{\code{$concatenateParagraphs()}}{}
+#'   \item{\code{$makeSpeakerNodes}}{}
+#'   \item{\code{$makeAgendaItemNodes}}{}
+#'   \item{\code{$makeXML()}}
+#'   \item{\code{$xmlify}}{}
+#'   
 #'}
 #' @export PlenaryProtocol
 #' @importFrom stringi stri_locate_all_regex
@@ -54,8 +61,13 @@ PlenaryProtocol <- R6Class(
 		
 		# methods 
 		
-		initialize = function(){
-		  warning("needs to be implemented for specific types of protocols")
+		initialize = function(filename, sourceDir, verbose = TRUE){
+		  self$filename <- filename
+		  self$sourceDir <- sourceDir
+		  x <- file.path(self$sourceDir, self$filename)
+		  if (verbose) message("... reading file: ", x)
+		  self$txt <- readLines(x)  
+		  invisible(self)
 		},
 		
 		
@@ -282,33 +294,33 @@ PlenaryProtocol <- R6Class(
 		  topicCallPosition <- which(topicCallDf[,"position"] > 0)
 		  # topicCallPosition <- which(topicCallLogical == TRUE)
 		  if (length(topicCallPosition) == 0){
-		    agendaItemParas <- list("0"=c(1:length(chunks)))
-		    topicCallDf <- data.frame(position=NA, type=NA, desc=NA)
+		    agendaItemParas <- list("0" = 1:length(chunks))
+		    topicCallDf <- data.frame(position = NA, type = NA, desc = NA)
 		  } else {
 		    topicCallDf <- data.frame(topicCallDf[topicCallPosition,])
 		    # to include the last para in the last topic called
 		    if (topicCallPosition[length(topicCallPosition)] != length(chunks)){
 		      topicCallPosition <- c(topicCallPosition, length(chunks))
 		    } 
-		    howToCut <- cut(x=c(1:length(chunks)), breaks=topicCallPosition, include.lowest=TRUE)
+		    howToCut <- cut(x = 1:length(chunks), breaks = topicCallPosition, include.lowest = TRUE)
 		    howToCutNumeric <- as.numeric(howToCut)
 		    howToCutNumeric[which(is.na(howToCutNumeric))] <- 0
 		    if (0 %in% howToCutNumeric){
 		      # not covered by the df
-		      topicCallDf <- rbind(data.frame(position=NA, type=NA, desc=NA), topicCallDf)
+		      topicCallDf <- rbind(data.frame(position = NA, type = NA, desc = NA), topicCallDf)
 		    }
 		    agendaItemParas <- split(1:length(chunks), howToCutNumeric)
 		  }
 		  self$agendaItemNodes <- lapply(
-		    c(1:length(agendaItemParas)),
+		    1:length(agendaItemParas),
 		    function(i){
 		      topicNode <- newXMLNode(
 		        "div",
-		        attrs=c(
-		          type="agenda_item",
-		          n=names(agendaItemParas)[i],
-		          what=unname(topicCallDf[i,"type"]),
-		          desc=unname(topicCallDf[i,"desc"])
+		        attrs = c(
+		          type = "agenda_item",
+		          n = names(agendaItemParas)[i],
+		          what = unname(topicCallDf[i,"type"]),
+		          desc = unname(topicCallDf[i,"desc"])
 		        )
 		      )
 		      addChildren(
@@ -339,16 +351,16 @@ PlenaryProtocol <- R6Class(
 		makeXML = function(){
 		  
 		  teiDoc <- xmlParse(self$xml, asText = TRUE)
-		  bodyElement <- getNodeSet(teiDoc, path="/TEI/text/body")[[1]]
+		  bodyElement <- getNodeSet(teiDoc, path = "/TEI/text/body")[[1]]
 		  addChildren(
 		    bodyElement,
 		    lapply(self$agendaItemNodes, function(x) xmlRoot(xmlParse(x, asText = TRUE)))
 		  )
-		  self$xml <- saveXML(teiDoc, prefix='<?xml version="1.0" encoding="UTF-8"?>', indent = TRUE, encoding="UTF-8")
+		  self$xml <- saveXML(teiDoc, prefix = '<?xml version="1.0" encoding="UTF-8"?>', indent = TRUE, encoding = "UTF-8")
 		},
 		
 		xmlify = function(verbose = TRUE){
-		  self$txt <- readLines(file.path(self$sourceDir, self$filename))
+		  # self$txt <- readLines(file.path(self$sourceDir, self$filename))
 		  self$preprocessing() # remove leading and and trailing spaces
 		  self$getMetadata() # returns a list with sessionNo, lp, date
 		  self$getDebate()
@@ -359,6 +371,42 @@ PlenaryProtocol <- R6Class(
 		  self$makeAgendaItemNodes()
 		  self$metadataToTei()
 		  self$makeXML()
+		},
+		
+		regexContextInChunks = function(regex, ncharContext = 100, verbose = FALSE){
+		  
+		  self$preprocessing() # remove leading and and trailing spaces
+		  self$getMetadata() # returns a list with sessionNo, lp, date
+		  self$getDebate()
+		  self$splitBySpeakers()
+		  self$concatenateMultilineInterjections() # in package ctk.plpr
+		  self$concatenateParagraphs(exclude = "pres")
+		  regexMatches <- lapply(
+		    1:length(self$chunks),
+		    function(i) {
+		      chunk <- self$chunks[[i]]
+		      role <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[i])
+		      matches <- ctk:::.regexContext(
+		        chunk,
+		        param = list(asText = TRUE, regex = regex, ncharContext = ncharContext)
+		      )
+		      if (nrow(matches) > 0){
+		        if (i == length(Protocol$chunks)){
+		          return(NULL)
+		        } else {
+		          return(data.frame(role = role, chunkNo = i, matches))  
+		        }
+		      } else {
+		        return(NULL)
+		      }
+		    })
+		  regexMatchDf <- do.call(rbind, regexMatches)
+		  if (!is.null(regexMatchDf)){
+		    regexMatchDf <- subset(regexMatchDf, !is.na(regexMatches))
+		    regexMatchDf[,"filename"] <- filename    
+		  }
+		  regexMatchDf  
 		}
+		
   )
 )

@@ -1,4 +1,4 @@
-#' Enricht TEI document.
+#' Enrich TEI document.
 #' 
 #' @field sourceDir the directory (full path) with the XML files to enhance
 #' @field speakerdata a \code{data.table} with the names of a speaker, and his/her role, inter alia
