@@ -3,13 +3,13 @@
 \docType{data}
 \name{Enhancer}
 \alias{Enhancer}
-\title{Enricht TEI document.}
+\title{Enrich TEI document.}
 \format{An object of class \code{R6ClassGenerator} of length 24.}
 \usage{
 Enhancer
 }
 \description{
-Enricht TEI document.
+Enrich TEI document.
 }
 \section{Fields}{
 

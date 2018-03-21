@@ -14,14 +14,22 @@
 #'   \item{\code{$preprocessing(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))}}{
 #'   the method will (a) remove empty lines, (b) remove leading and trailing whitespace, (c) carry out replacements, and 
 #'   (d) carry out document-specific functions}
-#'   \item{\code{$getMetadata()}}{extract metadata from document; the result will be stored in the field \code{metadata}}
-#'   \item{\code{$getDebate()}}{remove leading and trailing noise before the "actual debate" (such as table of contents, or annexes)}
-#'   \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text document into a list of chunks by applying regular expressions for speakers}
+#'   \item{\code{$getMetadata()}}{extract metadata from document; the result
+#'   will be stored in the field \code{metadata}}
+#'   \item{\code{$getDebate()}}{remove leading and trailing noise before the
+#'   "actual debate" (such as table of contents, or annexes)}
+#'   \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text
+#'   document into a list of chunks by applying regular expressions for
+#'   speakers}
 #'   \item{\code{$concatenateMultilineInterjections()}}{}
-#'   \item{\code{$concatenateParagraphs()}}{}
+#'   \item{\code{$concatenateParagraphs()}}{This function concatenates
+#'   paragraphs that are splitted (i.e. the text does not end with an
+#'   interpuncutation) by applying a regex. It includes an exlude parameter: The
+#'   formalities in the protocols explained by the president may include much
+#'   more than spoken text.}
 #'   \item{\code{$makeSpeakerNodes}}{}
 #'   \item{\code{$makeAgendaItemNodes}}{}
-#'   \item{\code{$makeXML()}}
+#'   \item{\code{$makeXML()}}{}
 #'   \item{\code{$xmlify}}{}
 #'   
 #'}
@@ -98,36 +106,9 @@ PlenaryProtocol <- R6Class(
 		  warning("needs to be implemented for specific protocol types")
 		},
 		
+		
 		getDebate = function(){
-		  txt <- self$txt  
-		  startOfDebate <- grep("Beginn:\\s+\\d+[\\.|:]\\d+\\s+Uhr", txt, perl = TRUE)
-		  if (length(startOfDebate) == 0){
-		    # in some protocols, the start time of the session is not provided
-		    # in this case, use the first line with "Beginn:", but only if the city is indicated 
-		    # in the line before
-		    cityOfSession <- grep("^(Bonn|Berlin),", txt, perl=T)[1]
-		    startOfDebate <- grep("^\\s*Beginn:\\s*$", txt, perl=T)
-		    if (startOfDebate[1] == cityOfSession + 1){
-		      startOfDebate <- startOfDebate[1]
-		    } else {
-		      startOfDebate <- c()
-		    }
-		  }
-		  if (length(startOfDebate) == 0){
-		    startOfDebate <- grep("(Sitzung\\sist\\ser\u00F6ffnet|er\u00F6ffne\\s+die\\s+Sit\\s*zung)", txt, perl=T) - 1
-		  }
-		  if (length(startOfDebate) == 0){
-		    startOfDebate <- grep("rufe\\s(den|)\\s*Tagesordnungspunkt\\s1\\sauf", txt, perl=T) - 2
-		  }
-		  endOfDebate <- grep("^\\s*\\(\\s*Schlu(ss|.)( der Sitzung|).*?Uhr", txt, perl=T)[1]
-		  if (length(endOfDebate) == 0 || is.na(endOfDebate)) {
-		    endOfDebate <- grep("Die\\sSitzung\\sist\\sgeschlossen", txt, perl=T) + 1
-		  }
-		  if (length(endOfDebate) == 0 || is.na(endOfDebate)) {
-		    endOfDebate <- length(txt)
-		    message("end of debate not found in ", self$filename)
-		  }
-		  self$txt <- txt[c((startOfDebate[1] + 1):(endOfDebate[1]-1))]
+		  warning("needs to be implemented for specific protocol types")
 		},
 		
 		splitBySpeakers = function(maxLengthWho = 60){
@@ -192,14 +173,45 @@ PlenaryProtocol <- R6Class(
 		  self$chunks <- chunksNew
 		},
 		
-		concatenateParagraphs = function(){
-		  
-		  "This function concatenates paragraphs that are splitted (i.e. the text does
-      not end with an interpuncutation) by applying a regex. It includes an exlude
-      parameter: The formalities in the protocols explained by the president may
-      include much more than spoken text."
-		  
-		  message("not implemented here")
+		concatenateParagraphs = function(exclude = "pres"){
+		  .chunkProcessor <- function(chunk){
+		    if (length(chunk) > 1){
+		      interjection <- grep("^\\s*\\(.*?\\)\\s*$", chunk)
+		      beforeInterjection <- interjection - 1
+		      cutPoints <- unique(c(1, interjection, beforeInterjection, length(chunk)))
+		      cutPoints <- cutPoints[order(cutPoints)]
+		      pieceDef <- cut(x = 1:length(chunk), breaks = unique(c(cutPoints, length(chunk))), include.lowest=T, right=T)
+		      paraSplit <- split(chunk, pieceDef)
+		      retval <- lapply(
+		        paraSplit,
+		        function(pieces){
+		          piecesPrep <- sapply(1:length(pieces), function(i) {
+		            if (grepl("-$", pieces[i])){
+		              if (grepl("^[A-Z]", pieces[i+1])){
+		                retval <- pieces[i]
+		              } else {
+		                retval <- gsub("-$", "", pieces[i])
+		              }
+		            } else {
+		              retval <- paste(pieces[i], " ", sep="")
+		            }
+		            retval
+		          })
+		          endOfParaCandidates <- grep("[.?!]\\s*$", piecesPrep, perl = TRUE)
+		          endOfPara <- endOfParaCandidates[which(nchar(endOfParaCandidates) < 40)]
+		          for (i in endOfPara) piecesPrep[i] <- gsub("([.?!])\\s*$", "\\1BREAK", piecesPrep[i])
+		          para <- paste(piecesPrep, collapse="")
+		          unlist(strsplit(para, "BREAK"))
+		        })
+		      return(unname(unlist(retval)))
+		    } else {
+		      retval <- list("[1,1]" = chunk)
+		      return(unname(unlist(retval)))
+		    }
+		  }
+		  newChunks <- lapply(self$chunks, .chunkProcessor)
+		  names(newChunks) <- names(self$chunks)
+		  self$chunks <- newChunks
 		},
 		
 		makeSpeakerNodes = function(){

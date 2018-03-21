@@ -131,7 +131,7 @@ PlenaryProtocolPipe <- R6::R6Class(
     },
     
     
-    regexContextInChunks <- function(sourceDir, regex, ncharContext, protocolclass = "PlenaryProtocol", ...){ 
+    regexContextInChunks = function(sourceDir, regex, ncharContext, protocolclass = "PlenaryProtocol", ...){ 
       data <- lapply(
         list.files(file.path(self$dir, sourceDir), full.names = FALSE),
         function(filename){

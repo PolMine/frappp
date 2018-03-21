@@ -10,7 +10,8 @@ Depends:
     methods,
     ctk,
     data.table,
-    R6
+    R6,
+    trickypdf
 Imports:
     stringi,
     XML
@@ -18,7 +19,6 @@ LazyData: yes
 License: no distribution without the author's permission
 Collate:
     'frappp_package.R'
-    'regexContextInChunks_method.R'
     'PlenaryProtocol.R'
     'PlenaryProtocolPipe.R'
     'Enhancer.R'

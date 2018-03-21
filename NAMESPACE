@@ -3,7 +3,6 @@
 export(Enhancer)
 export(PlenaryProtocol)
 export(PlenaryProtocolPipe)
-export(regexContextInChunks)
 import(ctk)
 import(data.table)
 import(methods)

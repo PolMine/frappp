@@ -29,4 +29,26 @@ PlenaryProtocol class.
 \item{\code{speakerRegex}}{speakerRegex (list)}
 }}
 
+\section{Methods}{
+
+\describe{
+  \item{\code{$new()}}{initialize method for a new object of class \code{PlenaryProtocol};
+  does nothing for class \code{PlenaryProtocol}, and needs to be defined for classes inheriting
+  from \code{PlenaryProtocol}}
+  \item{\code{$preprocessing(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))}}{
+  the method will (a) remove empty lines, (b) remove leading and trailing whitespace, (c) carry out replacements, and 
+  (d) carry out document-specific functions}
+  \item{\code{$getMetadata()}}{extract metadata from document; the result will be stored in the field \code{metadata}}
+  \item{\code{$getDebate()}}{remove leading and trailing noise before the "actual debate" (such as table of contents, or annexes)}
+  \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text document into a list of chunks by applying regular expressions for speakers}
+  \item{\code{$concatenateMultilineInterjections()}}{}
+  \item{\code{$concatenateParagraphs()}}{}
+  \item{\code{$makeSpeakerNodes}}{}
+  \item{\code{$makeAgendaItemNodes}}{}
+  \item{\code{$makeXML()}}{}
+  \item{\code{$xmlify}}{}
+  
+}
+}
+
 \keyword{datasets}

@@ -1,0 +1,107 @@
+---
+title: "Introducing the Framework for Parsing Plenary Protocols"
+author: "Andreas Blätte (andreas.blaette@uni-due.de)"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Introducing the Framework for Parsing Plenary Protocols}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+## Preparing a plain text file
+
+```{r}
+library(trickypdf)
+```
+
+```{r}
+doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
+UN <- trickypdf::PDF$new(filename_pdf = doc)
+if (interactive()) UN$show_pdf()
+```
+
+
+```{r}
+UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
+UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
+UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
+UN$get_text_from_boxes(paragraphs = TRUE)
+plaintext <- unname(unlist(UN$pages))
+```
+
+```{r}
+undoc_tmp <- tempfile()
+writeLines(text = plaintext, con = undoc_tmp)
+```
+
+## From Plain text to XML (TEI standard)
+
+```{r}
+library(frappp)
+```
+
+```{r}
+UNVR <- PlenaryProtocol$new(sourceDir = dirname(undoc_tmp), filename = basename(undoc_tmp))
+```
+
+```{r}
+UNVR$preprocessing() # remove leading and and trailing spaces
+UNVR$getMetadata() # returns a list with sessionNo, lp, date
+UNVR$metadata <- list(sessionNo = "1", lp = "1", data = "")
+# UNVR$getDebate()
+
+
+speakerRegexGA <- list(
+  pres = c(regex = "^(The\\s+President):\\s*(.*)$", who = "\\1"),
+  sg = c(regex = "^(The\\sSecretary-General):\\s*(.*?)$", who = "\\1")
+)
+UNVR$speakerRegex <- speakerRegexGA
+
+UNVR$speakerMismatch <- character()
+
+UNVR$speakerFactory <- list(
+  
+  pres = function(x) list(
+    who = gsub(speakerRegexGA[["pres"]]["regex"], "\\1", x, perl = TRUE),
+    parliamentary_group = "NA",
+    role = "presidency",
+    position = gsub(speakerRegexGA[["pres"]]["regex"], "Presidency", x, perl = TRUE),
+    text = gsub(speakerRegexGA[["pres"]]["regex"], "\\2", x, perl = TRUE)
+  ),
+  
+  sg = function(x) list(
+    who = gsub(speakerRegexGA[["sg"]]["regex"], "\\1", x, perl = TRUE),
+    parliamentary_group = "NA",
+    role = "sg",
+    position="sg",
+    text = gsub(speakerRegexGA[["sg"]]["regex"], "\\2", x, perl = TRUE)
+  )
+  
+)
+
+
+
+
+UNVR$splitBySpeakers()
+```
+
+
+
+```{r}
+# self$concatenateMultilineInterjections() # in package ctk.plpr
+UNVR$concatenateParagraphs(exclude = "pres")
+UNVR$makeSpeakerNodes()
+UNVR$makeAgendaItemNodes()
+UNVR$metadataToTei()
+UNVR$makeXML()
+
+tempfile_xml <- tempfile()
+writeLines(text = UNVR$xml, con = tempfile_xml)
+browseURL(url = tempfile_xml)
+```
+
+
