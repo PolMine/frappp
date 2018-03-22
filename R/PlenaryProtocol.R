@@ -112,35 +112,49 @@ PlenaryProtocol <- R6Class(
 		},
 		
 		splitBySpeakers = function(maxLengthWho = 60){
-		  txt <- self$txt
-		  speakerRegexList <- self$speakerRegex
-		  speakerMismatch <- self$speakerMismatch
-		  startParas <- lapply(speakerRegexList, function(speakerRegex) {
-		    index <- grep(speakerRegex["regex"], txt, perl=T)
-		    who <- gsub(speakerRegex["regex"], speakerRegex["who"], txt[index], perl=T)
-		    # keep only those speakers ("who") with names shorter than the maximum length
-		    toKeepLengthOk <- which(nchar(who) < maxLengthWho)
-		    toKeepNoMismatch <- which(!who %in% speakerMismatch)
-		    toKeep <- intersect(toKeepLengthOk, toKeepNoMismatch)
-		    index[toKeep]
-		  })
 		  
-		  # remove start paras for gov if present in mps
-		  overlapMpGov <- which(startParas$mp %in% startParas$gov == TRUE)
-		  if (length(overlapMpGov) > 0){
-		    startParas$gov <- startParas$gov[-which(startParas$gov %in% startParas$mp == TRUE)]
-		  }
+		  # The first step is to get the indices of the vector where a call to a speaker occurs.
+		  # We iterate through the list provided by the 'speakerRegex' field, and get the
+		  # index positions. Two checks are performed: (a) If the match for the name of the
+		  # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
+		  # included in the field 'speakerMismatch' are discarded, too.
+		  
+		  startParas <- lapply(
+		    self$speakerRegex,
+		    function(speakerRegex) {
+		      index <- grep(speakerRegex["regex"], self$txt, perl = TRUE)
+		      who <- gsub(speakerRegex["regex"], speakerRegex["who"], self$txt[index], perl = TRUE)
+		      # keep only those speakers ("who") with names shorter than the maximum length
+		      toKeepLengthOk <- which(nchar(who) < maxLengthWho)
+		      toKeepNoMismatch <- which(!who %in% self$speakerMismatch)
+		      toKeep <- intersect(toKeepLengthOk, toKeepNoMismatch)
+		      index[toKeep]
+		    }
+		  )
+		  
+		  # We may see that a string is matched by regexes for two different types of
+		  # speakers. We resolve those double matches by removing matches from one
+		  # list.
+		  overlap <- which(startParas[["mp"]] %in% startParas[["gov"]] == TRUE)
+		  if (length(overlap) > 0) startParas[["gov"]] <- startParas[["gov"]][-overlap]
+
+		  # Intermediate step: We now turn the list of starting paragraphs into a
+		  # oredered, named character vector.
 		  startParas <- unlist(startParas)
 		  startParas <- startParas[order(startParas)]
-		  # for debugging purpuses: txt[as.numeric(names(which(table(startParas) > 1)))]
-		  if (startParas[length(startParas)] != length(txt)){
-		    startParas <- c(startParas, length(txt))
+		  if (startParas[length(startParas)] != length(self$txt)){
+		    startParas <- c(startParas, length(self$txt))
 		  }
-		  parasSpeechesFactor <- cut(c(1:length(txt)), breaks=startParas, include.lowest=T, right=FALSE)
-		  docSplitted <- split(txt, parasSpeechesFactor)
-		  names(docSplitted) <- names(startParas)[c(1:length(docSplitted))]
-		  self$chunks <- docSplitted
+		  
+		  # Finally, the raw character vector is chunked, i.e. it is turned into a list
+		  # with sections of speech of one speaker that has been identified.
+		  parasSpeechesFactor <- cut(1:length(self$txt), breaks = startParas, include.lowest = TRUE, right = FALSE)
+		  self$chunks <- split(self$txt, parasSpeechesFactor)
+		  names(self$chunks) <- names(startParas)[1:length(self$chunks)]
+		  
+		  invisible(self$chunks)
 		},
+		
 		
 		concatenateMultilineInterjections = function(){
 		  chunks <- self$chunks
@@ -173,40 +187,65 @@ PlenaryProtocol <- R6Class(
 		  self$chunks <- chunksNew
 		},
 		
+		
 		concatenateParagraphs = function(exclude = "pres"){
+		  # The general scheme is that we iterate through the chunks. Thus there 
+		  # is a helper function '.chunkProcessor' to handle the individual chunks.
 		  .chunkProcessor <- function(chunk){
 		    if (length(chunk) > 1){
-		      interjection <- grep("^\\s*\\(.*?\\)\\s*$", chunk)
+		      # Each chunk is turned into a list of character vectors. The assumption here is
+		      # that concatenating paragraphs is not performed for interjections.
+		      interjection <- grep("^\\s*\\(.*?\\)\\s*$", chunk) # not yet generic
 		      beforeInterjection <- interjection - 1
 		      cutPoints <- unique(c(1, interjection, beforeInterjection, length(chunk)))
 		      cutPoints <- cutPoints[order(cutPoints)]
-		      pieceDef <- cut(x = 1:length(chunk), breaks = unique(c(cutPoints, length(chunk))), include.lowest=T, right=T)
+		      pieceDef <- cut(
+		        x = 1:length(chunk),
+		        breaks = unique(c(cutPoints, length(chunk))), include.lowest = TRUE, right = TRUE
+		        )
 		      paraSplit <- split(chunk, pieceDef)
+		      
+		      # Now, we we iterate through the list of speech and interjections.
 		      retval <- lapply(
 		        paraSplit,
 		        function(pieces){
-		          piecesPrep <- sapply(1:length(pieces), function(i) {
-		            if (grepl("-$", pieces[i])){
-		              if (grepl("^[A-Z]", pieces[i+1])){
-		                retval <- pieces[i]
+		          
+		          # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
+		          # and the next line does not start with a big capital letter, the hyphen is 
+		          # removed.
+		          piecesPrep <- sapply(
+		            1:length(pieces),
+		            function(i) {
+		              if (grepl("-$", pieces[i])){
+		                if (grepl("^[A-Z]", pieces[i+1])){
+		                  return( pieces[i] )
+		                } else {
+		                  return( gsub("-$", "", pieces[i]) )
+		                }
 		              } else {
-		                retval <- gsub("-$", "", pieces[i])
+		                return( paste(pieces[i], " ", sep = "") )
 		              }
-		            } else {
-		              retval <- paste(pieces[i], " ", sep="")
 		            }
-		            retval
-		          })
+		          )
+		          
+		          # To reconstruct paragraphs, the following heuristic is applied: We
+		          # assume that a new paragraph begins, if a line ends with a
+		          # punctuation mark, and if the length of the line undercuts a
+		          # certain threshold (hardcoded, 40).
 		          endOfParaCandidates <- grep("[.?!]\\s*$", piecesPrep, perl = TRUE)
 		          endOfPara <- endOfParaCandidates[which(nchar(endOfParaCandidates) < 40)]
 		          for (i in endOfPara) piecesPrep[i] <- gsub("([.?!])\\s*$", "\\1BREAK", piecesPrep[i])
-		          para <- paste(piecesPrep, collapse="")
+		          
+		          # Paste everything, and break it up again where we assume paragraphs to 
+		          # begin.
+		          para <- paste(piecesPrep, collapse = "")
 		          unlist(strsplit(para, "BREAK"))
-		        })
-		      return(unname(unlist(retval)))
+		        }
+		        )
+		      return( unname(unlist(retval)) )
 		    } else {
 		      retval <- list("[1,1]" = chunk)
-		      return(unname(unlist(retval)))
+		      return( unname(unlist(retval)) )
 		    }
 		  }
 		  newChunks <- lapply(self$chunks, .chunkProcessor)
@@ -215,34 +254,35 @@ PlenaryProtocol <- R6Class(
 		},
 		
 		makeSpeakerNodes = function(){
-		  chunks <- self$chunks
-		  self$speakerNodes <- lapply(1:length(chunks), function(i){
-		    textParas <- chunks[[i]]
-		    type <- gsub("^(.*?)\\d+$", "\\1", names(chunks)[[i]])
-		    speakerAttrs <- self$speakerFactory[[type]](textParas[1])
-		    speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
-		    textParas[1] <- speakerAttrs[["text"]]
-		    speakerAttrs[["text"]] <- NULL
-		    speakerAttrs <- lapply(speakerAttrs, function(x) {
-		      Encoding(x) <- "UTF-8"
-		      x
-		    })
-		    speakerNode <- newXMLNode("sp", attrs=as.vector(speakerAttrs))
+		  self$speakerNodes <- lapply(
+		    1:length(self$chunks),
+		    function(i){
+		      textParas <- self$chunks[[i]]
+		      type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[i]])
+		      speakerAttrs <- self$speakerFactory[[type]](textParas[1])
+		      speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
+		      textParas[1] <- speakerAttrs[["text"]]
+		      speakerAttrs[["text"]] <- NULL
+		      speakerAttrs <- lapply(speakerAttrs, function(x) {
+		        Encoding(x) <- "UTF-8"
+		        x
+		      })
+		    speakerNode <- newXMLNode("sp", attrs = as.vector(speakerAttrs))
 		    speakerCallNode <- newXMLNode("speaker", speakerCall)
 		    if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
 		    speakerNodeParas <- lapply(
 		      textParas,
 		      function(para){
 		        if (grepl("^\\s*\\((?!Erste\\sBeratung)(.*?)\\)\\s*$", para, perl=T)){
-		          newXMLNode("stage", attrs=c(type="interjection"), para)
+		          newXMLNode("stage", attrs = c(type="interjection"), para)
 		        } else {
 		          newXMLNode("p", para)
 		          # newXMLTextNode(para)
 		        }
 		      }
 		    )
-		    addChildren(speakerNode, kids=c(speakerCallNode, speakerNodeParas))
-		    saveXML(speakerNode, prefix=NULL)
+		    addChildren(speakerNode, kids = c(speakerCallNode, speakerNodeParas))
+		    saveXML(speakerNode, prefix = NULL)
 		  })
 		},
 		
@@ -250,7 +290,7 @@ PlenaryProtocol <- R6Class(
 		  chunks <- self$chunks
 		  # topicCallLogical will indicate which chunks contain a topic call
 		  matchTopicCall <- lapply(
-		    c(1:length(chunks)),
+		    1:length(chunks),
 		    function(i){
 		      chunk <- chunks[[i]]
 		      # chunkType -> whether speaker is "gov", "mp", or "pres", ...
