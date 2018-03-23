@@ -10,6 +10,9 @@
 \usage{
 PlenaryProtocol
 }
+\arguments{
+\item{template}{filename of the a TEI template document (valid XML)}
+}
 \description{
 PlenaryProtocol class.
 }
@@ -24,7 +27,7 @@ PlenaryProtocol class.
 
 \item{\code{chunks}}{class \code{"list"}}
 
-\item{\code{xml}}{class \code{"character"}}
+\item{\code{xml}}{class \code{"xml_document"}}
 
 \item{\code{speakerRegex}}{speakerRegex (list)}
 }}
@@ -38,12 +41,31 @@ PlenaryProtocol class.
   \item{\code{$preprocessing(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))}}{
   the method will (a) remove empty lines, (b) remove leading and trailing whitespace, (c) carry out replacements, and 
   (d) carry out document-specific functions}
-  \item{\code{$getMetadata()}}{extract metadata from document; the result will be stored in the field \code{metadata}}
-  \item{\code{$getDebate()}}{remove leading and trailing noise before the "actual debate" (such as table of contents, or annexes)}
-  \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text document into a list of chunks by applying regular expressions for speakers}
+  \item{\code{$getMetadata()}}{extract metadata from document; the result
+  will be stored in the field \code{metadata}}
+  \item{\code{$getDebate()}}{remove leading and trailing noise before the
+  "actual debate" (such as table of contents, or annexes)}
+  \item{\code{$splitBySpeakers(maxLengthWho = 60)}}{turn the plain text
+  document into a list of chunks by applying regular expressions for
+  speakers}
   \item{\code{$concatenateMultilineInterjections()}}{}
-  \item{\code{$concatenateParagraphs()}}{}
-  \item{\code{$makeSpeakerNodes}}{}
+  \item{\code{$concatenateParagraphs()}}{This function concatenates
+  paragraphs that are splitted (i.e. the text does not end with an
+  interpuncutation) by applying a regex. It includes an exlude parameter: The
+  formalities in the protocols explained by the president may include much
+  more than spoken text.}
+  \item{\code{$metadataToTei(template = system.file("xml", "teiTemplate.xml",
+  package = "frappp"))}}{Load and parse a template for a TEI document;
+  defaults to file 'teiTemplate.xml' included in the 'xml' subdirectory of
+  the 'frappp' package). The metadata defined in the field 'metadata' are
+  written into the XML document, using the the XPATH expressions in the field
+  'xpath'. The names of the list of metadata and the names of the character
+  vector with XPATH expressions serve as keys to match metadata information
+  and the XPATH expression that points to the correct location in the XML
+  document.}
+  \item{\code{$makeSpeakerNodes}}{Iterate through the chunks (i.e. list of 
+  character vectors in the field \code{chunks}) and add nodes for speakers
+  in the TEI document (in the field \code{xml})).}
   \item{\code{$makeAgendaItemNodes}}{}
   \item{\code{$makeXML()}}{}
   \item{\code{$xmlify}}{}

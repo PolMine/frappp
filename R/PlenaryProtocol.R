@@ -48,8 +48,9 @@
 #' @export PlenaryProtocol
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
-#' @importFrom XML newXMLNode saveXML xmlRoot xmlParse xmlTreeParse xmlValue
-#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_add_child
+#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child
+#' @importFrom gsubfn strapply
+#' @importFrom R6 R6Class
 PlenaryProtocol <- R6Class(
   
   "PlenaryProtocol",
@@ -61,24 +62,27 @@ PlenaryProtocol <- R6Class(
 	  filename = NULL, # character
 	  sourceDir = NULL, # character
 	  outfile = NULL, # character
-		txt = NULL, # character
+		
+	  txt = NULL, # character
 		chunks = NULL, # list
 		xml = NULL, # an xml document (from xml2 package)
 		html = NULL, # character
+		
+		metadata = NULL, # list
+		xpath = NULL, # list
+		downloadReportFile = NULL, # character
+
+		preprocessingFunctions = NULL, # list
+
 		speakerRegex = NULL, # list
-		speakerFactory = NULL, # list
+		speakerMismatchFile = NULL, # character
+		speakerMismatch = NULL, # character
+		
 		agendaItemRegex = NULL, # list
 		agendaItemTypes = NULL, # character
 		agendaItemNodes = NULL, # list
-		preprocessingFunctions = NULL, # list
-		speakerMismatchFile = NULL, # character
-		speakerMismatch = NULL, # character
 		agendaItemMismatchFile = NULL, # character
 		agendaItemMismatch = NULL, # list
-		speakerNodes = NULL, # list
-		metadata = NULL, # list
-		xpath = NULL, # list
-    downloadReportFile = NULL, # character
 		
 		# methods 
 		
@@ -135,13 +139,11 @@ PlenaryProtocol <- R6Class(
 		  startParas <- lapply(
 		    self$speakerRegex,
 		    function(speakerRegex) {
-		      index <- grep(speakerRegex["regex"], self$txt, perl = TRUE)
-		      who <- gsub(speakerRegex["regex"], speakerRegex["who"], self$txt[index], perl = TRUE)
-		      # keep only those speakers ("who") with names shorter than the maximum length
-		      toKeepLengthOk <- which(nchar(who) < maxLengthWho)
-		      toKeepNoMismatch <- which(!who %in% self$speakerMismatch)
-		      toKeep <- intersect(toKeepLengthOk, toKeepNoMismatch)
-		      index[toKeep]
+		      matchlist <- strapply(self$txt, pattern = speakerRegex[["regex"]], FUN = speakerRegex[["fn"]], perl = TRUE)
+		      index <- which(sapply(matchlist, is.null) == FALSE) # where did the regex match?
+		      indexChecked <- sapply(index, function(i) if (nchar(matchlist[[i]]["who"]) < maxLengthWho) i else NA)
+		      if (any(is.na(indexChecked))) indexChecked <- indexChecked[!is.na(indexChecked)]
+		      indexChecked
 		    }
 		  )
 		  
@@ -272,24 +274,29 @@ PlenaryProtocol <- R6Class(
 		  bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
 		  
 		  # iterate through speaker chunks and create speaker nodes
-		  self$speakerNodes <- lapply(
+		  lapply(
 		    1:length(self$chunks),
 		    function(i){
 		      
 		      # get chunk to precess and remove empty lines, if necessary
-		      # actually late to check here, but left for precaution
+		      # actually late to check here, but left for precaution and to avoid empty
+		      # paragraphs
 		      textParas <- self$chunks[[i]]
 		      if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
 		      
 		      type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[i]])
-		      speakerAttrs <- self$speakerFactory[[type]](textParas[1])
+		      speakerAttrs <- strapply(
+		        X = textParas[1],
+		        pattern = self$speakerRegex[[type]][["regex"]],
+		        FUN = self$speakerRegex[[type]][["fn"]]
+		        )[[1]]
 		      speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
 		      textParas[1] <- speakerAttrs[["text"]]
-		      speakerAttrs[["text"]] <- NULL
-		      speakerAttrs <- lapply(speakerAttrs, function(x){ Encoding(x) <- "UTF-8"; x })
-		      
+		      speakerAttrs <- speakerAttrs[which(names(speakerAttrs) != "text")]
+		      Encoding(speakerAttrs) <- "UTF-8" # just to be sure
+
 		      newSpeakerNode <- xml_add_child(.x = bodyNode, .value = "sp")
-		      xml_attrs(newSpeakerNode) <- as.vector(speakerAttrs)
+		      xml_attrs(newSpeakerNode) <- speakerAttrs
 		      xml_add_child(newSpeakerNode, .value = "speaker", speakerCall)
 		      
 		      lapply(
@@ -305,6 +312,7 @@ PlenaryProtocol <- R6Class(
 		      )
 		    }
 		  )
+		  invisible(self)
 		},
 		
 		makeAgendaItemNodes = function(maxLengthAgendaItemMatch = NULL, maxNcharAgendaItemDesc = 80){

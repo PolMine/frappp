@@ -9,12 +9,13 @@ Description: Framework for the XMLification (Parsing) of Plenary Protocols.
 Depends:
     methods,
     ctk,
-    data.table,
-    R6,
-    trickypdf
+    data.table
 Imports:
+    R6,
     stringi,
-    XML
+    gsubfn,
+    xml2,
+    trickypdf
 LazyData: yes
 License: no distribution without the author's permission
 Collate:

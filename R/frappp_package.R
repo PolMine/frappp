@@ -10,4 +10,5 @@
 #' @rdname frappp-package
 #' @author Andreas Blaette
 #' @import methods data.table
+#' @importFrom trickypdf PDF
 NULL

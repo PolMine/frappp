@@ -29,7 +29,7 @@ UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
-UN$get_text_from_boxes(paragraphs = TRUE)
+UN$get_text_from_boxes(paragraphs = FALSE)
 plaintext <- unname(unlist(UN$pages))
 ```
 
@@ -65,39 +65,45 @@ UNVR$metadata <- list(
 UNVR$xpath <- teiXpath
 ```
 
-```{r}
-speakerRegexGA <- list(
-  pres = c(regex = "^(The\\s+President):\\s*(.*)$", who = "\\1"),
-  sg = c(regex = "^(The\\sSecretary-General):\\s*(.*?)$", who = "\\1")
-)
-UNVR$speakerRegex <- speakerRegexGA
-UNVR$speakerMismatch <- character()
 
-UNVR$speakerFactory <- list(
+```{r}
+UNVR$speakerRegex <- list(
   
-  pres = function(x) list(
-    who = gsub(speakerRegexGA[["pres"]]["regex"], "\\1", x, perl = TRUE),
-    parliamentary_group = "NA",
-    role = "presidency",
-    position = gsub(speakerRegexGA[["pres"]]["regex"], "Presidency", x, perl = TRUE),
-    text = gsub(speakerRegexGA[["pres"]]["regex"], "\\2", x, perl = TRUE)
+  pres = list(
+    regex = "^(The\\s+President):\\s*(.+)$",
+    fn = function(who, txt){
+      c(
+        who = who,
+        state = "NA",
+        role = "presidency",
+        position = "presidency",
+        text = txt
+      )
+    }
   ),
   
-  sg = function(x) list(
-    who = gsub(speakerRegexGA[["sg"]]["regex"], "\\1", x, perl = TRUE),
-    parliamentary_group = "NA",
-    role = "sg",
-    position="sg",
-    text = gsub(speakerRegexGA[["sg"]]["regex"], "\\2", x, perl = TRUE)
+  sg = list(
+    regex = "^(The\\sSecretary-General):\\s*(.+)$",
+    fn = function(who, txt){
+      c(
+        who = who,
+        state = "NA",
+        role = "secretary-general",
+        position = "secretary-general",
+        text = txt
+      )
+    }
   )
   
 )
+
+UNVR$speakerMismatch <- character()
 ```
 
 
 ```{r}
 UNVR$preprocessing() # remove leading and and trailing spaces
-UNVR$getMetadata() # returns a list with sessionNo, lp, date
+# UNVR$getMetadata() # returns a list with sessionNo, lp, date
 # self$concatenateMultilineInterjections() # in package ctk.plpr
 ```
 
