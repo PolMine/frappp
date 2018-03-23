@@ -58,12 +58,9 @@ PlenaryProtocol <- R6Class(
   public = list(
     
     # fields
+	  id = NULL,
     
-	  filename = NULL, # character
-	  sourceDir = NULL, # character
-	  outfile = NULL, # character
-		
-	  txt = NULL, # character
+    txt = NULL, # character
 		chunks = NULL, # list
 		xml = NULL, # an xml document (from xml2 package)
 		html = NULL, # character
@@ -73,6 +70,8 @@ PlenaryProtocol <- R6Class(
 		downloadReportFile = NULL, # character
 
 		preprocessingFunctions = NULL, # list
+		
+		interjectionRegex = NULL,
 
 		speakerRegex = NULL, # list
 		speakerMismatchFile = NULL, # character
@@ -86,12 +85,16 @@ PlenaryProtocol <- R6Class(
 		
 		# methods 
 		
-		initialize = function(filename, sourceDir, verbose = TRUE){
-		  self$filename <- filename
-		  self$sourceDir <- sourceDir
-		  x <- file.path(self$sourceDir, self$filename)
-		  if (verbose) message("... reading file: ", x)
-		  self$txt <- readLines(x)  
+		initialize = function(id, interjectionRegex = "^\\s*\\(.*?\\)\\s*$", xpath = teiXpath){
+		  self$id <- id
+		  self$interjectionRegex <- interjectionRegex
+		  self$xpath = xpath
+		  invisible(self)
+		},
+		
+		
+		readFile = function(filename){
+		  self$txt <- readLines(filename)  
 		  invisible(self)
 		},
 		
@@ -111,7 +114,7 @@ PlenaryProtocol <- R6Class(
 		  }
 		  
 		  # execute document-specific preprocessing functions
-		  if (self$filename %in% names(self$preprocessingFunctions)){
+		  if (self$id %in% names(self$preprocessingFunctions)){
 		    txt <- self$preprocessingFunctions[[self$filename]](self$txt)
 		  }
 		  
@@ -203,220 +206,167 @@ PlenaryProtocol <- R6Class(
 		},
 		
 		
-		concatenateParagraphs = function(exclude = "pres"){
+		paragraphize = function(x){
+		  # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
+		  # and the next line does not start with a big capital letter, the hyphen is 
+		  # removed.
+		  x2 <- sapply(
+		    1:length(x),
+		    function(i) {
+		      if (grepl("-$", x[i])){
+		        y <- if (grepl("^[A-Z]", x[i+1])) x[i] else gsub("-$", "", x[i])
+		      } else {
+		        y <- gsub("^\\s*(.*?)\\s*$", "\\1 ", x[i])
+		      }
+		      y
+		    }
+		  )
+		  
+		  # To reconstruct paragraphs, the following heuristic is applied: We
+		  # assume that a new paragraph begins, if a line ends with a
+		  # punctuation mark, and if the length of the line undercuts a
+		  # certain threshold (hardcoded, 40).
+		  shortLines <- which(nchar(x2) < 40)
+		  x2[shortLines] <- sprintf("%s<linebreak/>", x2[shortLines])
+		  
+		  # Paste everything, and break it up again
+		  concatenated <- paste(x2, collapse = "")
+		  paragraphs <- unlist(strsplit(concatenated, "<linebreak/>"))
+		  emptyLines <- grep("^\\s*$", paragraphs)
+		  if (length(emptyLines) > 0) paragraphs <- paragraphs[-emptyLines]
+		  gsub("^\\s*(.*?)\\s*$", "\\1", paragraphs, perl = TRUE)
+		},
+		
+		
+		reconstructParagraphs = function(exclude = "pres"){
 		  # The general scheme is that we iterate through the chunks. Thus there 
 		  # is a helper function '.chunkProcessor' to handle the individual chunks.
-		  .chunkProcessor <- function(chunk){
+		  .processor <- function(chunk){
 		    if (length(chunk) > 1){
 		      # Each chunk is turned into a list of character vectors. The assumption here is
 		      # that concatenating paragraphs is not performed for interjections.
-		      interjection <- grep("^\\s*\\(.*?\\)\\s*$", chunk) # not yet generic
+		      interjection <- grep(self$interjectionRegex, chunk)
 		      beforeInterjection <- interjection - 1
-		      cutPoints <- unique(c(1, interjection, beforeInterjection, length(chunk)))
+		      cutPoints <- unique(c(1, beforeInterjection, interjection, length(chunk)))
 		      cutPoints <- cutPoints[order(cutPoints)]
-		      pieceDef <- cut(
-		        x = 1:length(chunk),
-		        breaks = unique(c(cutPoints, length(chunk))), include.lowest = TRUE, right = TRUE
+		      sections <- cut(
+		        x = 1:length(chunk), breaks = cutPoints,
+		        include.lowest = TRUE, right = TRUE
 		        )
-		      paraSplit <- split(chunk, pieceDef)
+		      paraSplit <- split(chunk, sections)
 		      
-		      # Now, we we iterate through the list of speech and interjections.
-		      retval <- lapply(
-		        paraSplit,
-		        function(pieces){
-		          
-		          # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
-		          # and the next line does not start with a big capital letter, the hyphen is 
-		          # removed.
-		          piecesPrep <- sapply(
-		            1:length(pieces),
-		            function(i) {
-		              if (grepl("-$", pieces[i])){
-		                if (grepl("^[A-Z]", pieces[i+1])){
-		                  return( pieces[i] )
-		                } else {
-		                  return( gsub("-$", "", pieces[i]) )
-		                }
-		              } else {
-		                return( paste(pieces[i], " ", sep = "") )
-		              }
-		            }
-		          )
-		          
-		          # To reconstruct paragraphs, the following heuristic is applied: We
-		          # assume that a new paragraph begins, if a line ends with a
-		          # punctuation mark, and if the length of the line undercuts a
-		          # certain threshold (hardcoded, 40).
-		          endOfParaCandidates <- grep("[.?!]\\s*$", piecesPrep, perl = TRUE)
-		          endOfPara <- endOfParaCandidates[which(nchar(endOfParaCandidates) < 40)]
-		          for (i in endOfPara) piecesPrep[i] <- gsub("([.?!])\\s*$", "\\1BREAK", piecesPrep[i])
-		          
-		          # Paste everything, and break it up again where we assume paragraphs to 
-		          # begin.
-		          para <- paste(piecesPrep, collapse = "")
-		          unlist(strsplit(para, "BREAK"))
-		        }
-		        )
+		      # iterate through the list of speech and interjections.
+		      retval <- lapply(paraSplit, self$paragraphize)
 		      return( unname(unlist(retval)) )
 		    } else {
-		      retval <- list("[1,1]" = chunk)
-		      return( unname(unlist(retval)) )
+		      return( chunk )
 		    }
 		  }
-		  newChunks <- lapply(self$chunks, .chunkProcessor)
+		  newChunks <- lapply(self$chunks, .processor)
 		  names(newChunks) <- names(self$chunks)
 		  self$chunks <- newChunks
 		},
 		
-		makeSpeakerNodes = function(){
+		
+		getAgendaItemCalls = function(maxNcharAgendaItemDesc = 40){
 		  
-		  # new nodes for speakers will be created as children of body node
-		  bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
-		  
-		  # iterate through speaker chunks and create speaker nodes
-		  lapply(
-		    1:length(self$chunks),
-		    function(i){
-		      
-		      # get chunk to precess and remove empty lines, if necessary
-		      # actually late to check here, but left for precaution and to avoid empty
-		      # paragraphs
-		      textParas <- self$chunks[[i]]
-		      if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
-		      
-		      type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[i]])
-		      speakerAttrs <- strapply(
-		        X = textParas[1],
-		        pattern = self$speakerRegex[[type]][["regex"]],
-		        FUN = self$speakerRegex[[type]][["fn"]]
-		        )[[1]]
-		      speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
-		      textParas[1] <- speakerAttrs[["text"]]
-		      speakerAttrs <- speakerAttrs[which(names(speakerAttrs) != "text")]
-		      Encoding(speakerAttrs) <- "UTF-8" # just to be sure
+		  chunkTypes <- gsub("(.*?)\\d+", "\\1", names(self$chunks))
+		  chunksToConsider <- which(chunkTypes == "pres")
 
-		      newSpeakerNode <- xml_add_child(.x = bodyNode, .value = "sp")
-		      xml_attrs(newSpeakerNode) <- speakerAttrs
-		      xml_add_child(newSpeakerNode, .value = "speaker", speakerCall)
+		  matchesForTopicCall <- lapply(
+		    
+		    chunksToConsider,
+		    
+		    function(i){
+		      chunk <- self$chunks[[i]]
 		      
-		      lapply(
-		        textParas,
-		        function(para){
-		          if (grepl("^\\s*\\(.*?\\)\\s*$", para, perl = TRUE)){
-		            # add element for interjection, if respective regex matches
-		            xml_add_child(newSpeakerNode, .value = "stage", type = "interjection", para)
-		          } else {
-		            xml_add_child(newSpeakerNode, .value = "p", para)
-		          }
+		      # get the lines where one of agenda item regexes matches
+		      matchAgendaItemCall <- unique(unlist(lapply(self$agendaItemRegex, function(regex) grep(regex, chunk))))
+		      if (length(matchAgendaItemCall) == 0) return( NULL )
+		      
+		      # remove the matching lines that are known to be mismatches
+		      mismatches <- self$agendaItemMismatch[[self$filename]]
+		      if (!is.null(mismatches)){
+		        agendaItemMismatchPosition <- unique(unlist(
+		          lapply(mismatches, function(mismatch) grep(mismatch, chunk)
+		          )))
+		        if (length(agendaItemMismatchPosition) > 0) matchAgendaItemCall <- matchAgendaItemCall[-agendaItemMismatchPosition]
+		      }
+		      if (length(matchAgendaItemCall) == 0) return( NULL ) # stop things if nothing left
+		      
+		      matchPosition <- max(matchAgendaItemCall) # apply only last call of an agenda item
+		      if (matchPosition > length(chunk)) return( NULL ) # no idea how it can happen, but it happened 
+		      
+		      # which of the regexes did the hit?
+		      matchRegexLogical <- sapply(self$agendaItemRegex, function(regex) grepl(regex, chunk[matchPosition]))
+		      regexName <- names(matchRegexLogical)[which(matchRegexLogical == TRUE)]
+		      
+		      if (any(regexName != "any")){
+		        agendaItemType <- regexName[which(regexName != "any")][1]
+		        agendaItemDesc <- unname(self$agendaItemTypes[agendaItemType])
+		      } else if (matchPosition < length(chunk)){
+		        agendaItemTitle <- chunk[matchPosition + 1]
+		        agendaItemTypeMatch <- sapply(self$agendaItemTypes, function(regex) grepl(regex, agendaItemTitle))
+		        agendaItemType <- paste(names(agendaItemTypeMatch[which(agendaItemTypeMatch == TRUE)]), collapse="|")   
+		        agendaItemDesc <- if (nchar(agendaItemTitle) > maxNcharAgendaItemDesc){
+		          paste(substr(agendaItemTitle, 1, maxNcharAgendaItemDesc), "...", sep="")
+		        } else {
+		          agendaItemTitle
 		        }
-		      )
+		      }
+		      data.frame(
+		        chunk = i, position = matchPosition, type = agendaItemType, desc = agendaItemDesc,
+		        stringsAsFactors = FALSE
+		        )
 		    }
 		  )
+		  topicCallDf <- do.call(rbind, matchesForTopicCall)
+		  invisible(topicCallDf)
+		},
+		
+		
+		makeSpeakerNode = function(chunkNo, parent){
+		  # remove empty lines, if necessary
+		  textParas <- self$chunks[[chunkNo]]
+		  if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
+		  
+		  type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunkNo]])
+		  speakerAttrs <- strapply(
+		    X = textParas[1],
+		    pattern = self$speakerRegex[[type]][["regex"]],
+		    FUN = self$speakerRegex[[type]][["fn"]]
+		  )[[1]]
+		  speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
+		  textParas[1] <- speakerAttrs[["text"]]
+		  speakerAttrs <- speakerAttrs[which(names(speakerAttrs) != "text")]
+		  Encoding(speakerAttrs) <- "UTF-8" # just to be sure
+		  
+		  newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
+		  xml_attrs(newSpeakerNode) <- speakerAttrs
+		  xml_add_child(newSpeakerNode, .value = "speaker", speakerCall)
+		  
+		  lapply(
+		    textParas,
+		    function(para){
+		      if (grepl("^\\s*\\(.*?\\)\\s*$", para, perl = TRUE)){
+		        # add element for interjection, if respective regex matches
+		        xml_add_child(newSpeakerNode, .value = "stage", type = "interjection", para)
+		      } else {
+		        xml_add_child(newSpeakerNode, .value = "p", para)
+		      }
+		    }
+		  )
+		  invisible(type)
+		},
+
+		
+		makeSpeakerNodes = function(chunkNos, parent){
+		  lapply(chunkNos, function(i) self$makeSpeakerNode(chunkNo = i, parent = parent))
 		  invisible(self)
 		},
 		
-		makeAgendaItemNodes = function(maxLengthAgendaItemMatch = NULL, maxNcharAgendaItemDesc = 80){
-		  chunks <- self$chunks
-		  # topicCallLogical will indicate which chunks contain a topic call
-		  matchTopicCall <- lapply(
-		    1:length(chunks),
-		    function(i){
-		      chunk <- chunks[[i]]
-		      # chunkType -> whether speaker is "gov", "mp", or "pres", ...
-		      chunkType <- gsub("(.*?)\\d+", "\\1", names(chunks)[i])
-		      # get the lines where one of agenda item regexes matches
-		      matchAgendaItemCall <- unique(unlist(lapply(self$agendaItemRegex, function(regex) grep(regex, chunk))))
-		      
-		      # remove the matching lines that are known to be a mismatch
-		      if (!is.null(self$agendaItemMismatch[[self$filename]])){
-		        agendaItemMismatchPosition <- unique(unlist(lapply(
-		          self$agendaItemMismatch[[self$filename]],
-		          function(mismatch) grep(mismatch, chunk)
-		        )))
-		        if (length(agendaItemMismatchPosition) > 0) matchAgendaItemCall <- matchAgendaItemCall[-agendaItemMismatchPosition]
-		      }
-		      # annotate call of a debate only if it occurs in a speech of the presidency
-		      if(length(matchAgendaItemCall) > 0 && chunkType == "pres"){
-		        matchPosition <- max(matchAgendaItemCall) # apply only last call of an agenda item
-		        if (matchPosition <= length(chunk)){
-		          # which of the regexes did the hit?
-		          matchRegexLogical <- sapply(self$agendaItemRegex, function(regex) grepl(regex, chunk[matchPosition]))
-		          regexName <- names(matchRegexLogical)[which(matchRegexLogical == TRUE)]
-		          if (any(regexName != "any")){
-		            agendaItemType <- regexName[which(regexName != "any")][1]
-		            agendaItemDesc <- unname(self$agendaItemTypes[agendaItemType])
-		          } else if (matchPosition < length(chunk)){
-		            agendaItemTitle <- chunk[matchPosition + 1]
-		            agendaItemTypeMatch <- sapply(self$agendaItemTypes, function(regex) grepl(regex, agendaItemTitle))
-		            agendaItemType <- paste(names(agendaItemTypeMatch[which(agendaItemTypeMatch == TRUE)]), collapse="|")   
-		            agendaItemDesc <- ifelse(
-		              nchar(agendaItemTitle) > maxNcharAgendaItemDesc,
-		              paste(substr(agendaItemTitle, 1, maxNcharAgendaItemDesc), "...", sep=""),
-		              agendaItemTitle
-		            )            
-		          } else {
-		            agendaItemType <- NA
-		            agendaItemDesc <- NA
-		          }
-		          
-		        } else {
-		          agendaItemType <- NA
-		          agendaItemDesc <- NA
-		        }
-		      } else {
-		        matchPosition <- 0
-		        agendaItemType <- NA
-		        agendaItemDesc <- NA 
-		      }
-		      list(matchPosition, agendaItemType, agendaItemDesc)
-		    })
-		  topicCallDf <- do.call(rbind, matchTopicCall)
-		  colnames(topicCallDf) <- c("position", "type", "desc")
-		  topicCallPosition <- which(topicCallDf[,"position"] > 0)
-		  # topicCallPosition <- which(topicCallLogical == TRUE)
-		  if (length(topicCallPosition) == 0){
-		    agendaItemParas <- list("0" = 1:length(chunks))
-		    topicCallDf <- data.frame(position = NA, type = NA, desc = NA)
-		  } else {
-		    topicCallDf <- data.frame(topicCallDf[topicCallPosition,])
-		    # to include the last para in the last topic called
-		    if (topicCallPosition[length(topicCallPosition)] != length(chunks)){
-		      topicCallPosition <- c(topicCallPosition, length(chunks))
-		    } 
-		    howToCut <- cut(x = 1:length(chunks), breaks = topicCallPosition, include.lowest = TRUE)
-		    howToCutNumeric <- as.numeric(howToCut)
-		    howToCutNumeric[which(is.na(howToCutNumeric))] <- 0
-		    if (0 %in% howToCutNumeric){
-		      # not covered by the df
-		      topicCallDf <- rbind(data.frame(position = NA, type = NA, desc = NA), topicCallDf)
-		    }
-		    agendaItemParas <- split(1:length(chunks), howToCutNumeric)
-		  }
-		  self$agendaItemNodes <- lapply(
-		    1:length(agendaItemParas),
-		    function(i){
-		      topicNode <- newXMLNode(
-		        "div",
-		        attrs = c(
-		          type = "agenda_item",
-		          n = names(agendaItemParas)[i],
-		          what = unname(topicCallDf[i,"type"]),
-		          desc = unname(topicCallDf[i,"desc"])
-		        )
-		      )
-		      addChildren(
-		        topicNode,
-		        lapply(
-		          agendaItemParas[[i]],
-		          function(j) xmlRoot(xmlParse(self$speakerNodes[[j]], asText=TRUE))
-		        )
-		      )
-		      saveXML(topicNode)
-		    })
-		},
 		
-		
-		metadataToTei = function(template = system.file("xml", "teiTemplate.xml", package = "frappp")){
+		makeHeader = function(template = system.file("xml", "teiTemplate.xml", package = "frappp")){
 		  self$xml <- xml2::read_xml(template)
 		  lapply(
 		    names(self$xpath),
@@ -427,17 +377,44 @@ PlenaryProtocol <- R6Class(
 		  invisible(self$xml)
 		},
 		
-
-		makeXML = function(){
-		  
-		  teiDoc <- xml2::read_xml(self$xml, asText = TRUE)
-		  bodyElement <- getNodeSet(teiDoc, path = "/TEI/text/body")[[1]]
-		  addChildren(
-		    bodyElement,
-		    lapply(self$agendaItemNodes, function(x) xmlRoot(xmlParse(x, asText = TRUE)))
-		  )
-		  self$xml <- saveXML(teiDoc, prefix = '<?xml version="1.0" encoding="UTF-8"?>', indent = TRUE, encoding = "UTF-8")
+		
+		makeBody = function(agendaItems = FALSE){
+		  bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
+		  if (agendaItems == FALSE){
+		    self$makeSpeakerNodes(chunkNos = 1:length(self$chunks), parent = bodyNode)
+		  } else {
+		    topicCallDf <- self$getAgendaItemCalls()
+		    if (is.null(topicCallDf)){
+		      agendaItemChunks <- list(1:length(self$chunks))
+		      topicCallDf <- data.frame(chunk = 1, position = NA, type = NA, desc = NA)
+		    } else {
+		      topicCallChunks <- topicCallDf[["chunk"]]
+		      # to include the last para in the last topic called
+		      if (max(topicCallChunks) != length(self$chunks)){
+		        topicCallChunks <- c(topicCallChunks, length(self$chunks))
+		      }
+		      howToCut <- cut(x = 1:length(self$chunks), breaks = topicCallChunks, include.lowest = TRUE)
+		      howToCutInt <- as.integer(howToCut)
+		      howToCutInt[which(is.na(howToCutInt))] <- 0
+		      if (0 %in% howToCutInt){
+		        topicCallDf <- rbind(data.frame(chunk = 1, position = NA, type = NA, desc = NA), topicCallDf)
+		      }
+		      agendaItemChunks <- split(1:length(self$chunks), howToCutInt)
+		    }
+		    lapply(
+		      1:length(agendaItemChunks),
+		      function(i){
+		        newAgendaItemNode <- xml_add_child(
+		          .x = bodyNode, .value = "div", type = "agenda_item", 
+		          n = names(agendaItemChunks)[i], what = unname(topicCallDf[i,"type"]), desc = unname(topicCallDf[i,"desc"])
+		        )
+		        self$makeSpeakerNodes(chunkNos = agendaItemChunks[[i]], parent = newAgendaItemNode)
+		      }
+		    )
+		  }
+		  invisible(self)
 		},
+		
 		
 		xmlify = function(verbose = TRUE){
 		  # self$txt <- readLines(file.path(self$sourceDir, self$filename))

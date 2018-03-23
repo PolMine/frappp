@@ -25,7 +25,8 @@ if (interactive()) UN$show_pdf()
 
 
 ```{r}
-UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+# UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+UN$add_box(page = 1, box = c(top = 232, height = 400, left = 52, width = 255))
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
@@ -45,24 +46,7 @@ library(frappp)
 ```
 
 ```{r}
-UNVR <- PlenaryProtocol$new(sourceDir = dirname(undoc_tmp), filename = basename(undoc_tmp))
-```
-
-```{r}
-UNVR$metadata <- list(
-  legislativePeriod = "71", # formally, sessions are not called legislative periods at the UN
-  sessionNo = "1",
-  date = "2016-09-03",
-  birthday = as.character(Sys.Date()),
-  package = "frappp",
-  version = packageVersion("frappp"),
-  retrievalDate = "unknown",
-  filetype = "pdf",
-  url = "http://www.un.org/en/ga/",
-  publisher = "United Nations",
-  title = "Verbatim Records of the United Nations"
-  )
-UNVR$xpath <- teiXpath
+UNVR <- PlenaryProtocol$new(id = "A/71/PV.1")
 ```
 
 
@@ -102,26 +86,51 @@ UNVR$speakerMismatch <- character()
 
 
 ```{r}
+UNVR$agendaItemRegex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
+UNVR$agendaItemTypes <- c(any = "debate")
+```
+
+
+## Processing a Protocol
+
+```{r}
+UNVR$readFile(filename = undoc_tmp)
+```
+
+
+```{r}
+UNVR$metadata <- list(
+  legislativePeriod = "71", # formally, sessions are not called legislative periods at the UN
+  sessionNo = "1",
+  date = "2016-09-03",
+  birthday = as.character(Sys.Date()),
+  package = "frappp",
+  version = packageVersion("frappp"),
+  retrievalDate = "unknown",
+  filetype = "pdf",
+  url = "http://www.un.org/en/ga/",
+  publisher = "United Nations",
+  title = "Verbatim Records of the United Nations"
+  )
+```
+
+
+```{r}
 UNVR$preprocessing() # remove leading and and trailing spaces
 # UNVR$getMetadata() # returns a list with sessionNo, lp, date
 # self$concatenateMultilineInterjections() # in package ctk.plpr
 ```
 
 ```{r}
-UNVR$metadataToTei()
+UNVR$makeHeader()
 ```
 
 ```{r}
 UNVR$splitBySpeakers()
-UNVR$concatenateParagraphs(exclude = "pres")
-UNVR$makeSpeakerNodes()
+UNVR$reconstructParagraphs(exclude = "pres")
+UNVR$makeBody(agendaItems = TRUE)
 ```
 
-
-```{r}
-# UNVR$makeAgendaItemNodes()
-# UNVR$makeXML()
-```
 
 
 ```{r}
