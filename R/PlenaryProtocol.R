@@ -4,8 +4,9 @@
 #' @field sourceDir the directory where the file to be processed resides
 #' @field txt class \code{"character"}
 #' @field chunks class \code{"list"} 
-#' @field xml class \code{"character"}
+#' @field xml class \code{"xml_document"}
 #' @field speakerRegex speakerRegex (list)
+#' @param template filename of the a TEI template document (valid XML)
 #' @section Methods:
 #' \describe{
 #'   \item{\code{$new()}}{initialize method for a new object of class \code{PlenaryProtocol};
@@ -27,7 +28,18 @@
 #'   interpuncutation) by applying a regex. It includes an exlude parameter: The
 #'   formalities in the protocols explained by the president may include much
 #'   more than spoken text.}
-#'   \item{\code{$makeSpeakerNodes}}{}
+#'   \item{\code{$metadataToTei(template = system.file("xml", "teiTemplate.xml",
+#'   package = "frappp"))}}{Load and parse a template for a TEI document;
+#'   defaults to file 'teiTemplate.xml' included in the 'xml' subdirectory of
+#'   the 'frappp' package). The metadata defined in the field 'metadata' are
+#'   written into the XML document, using the the XPATH expressions in the field
+#'   'xpath'. The names of the list of metadata and the names of the character
+#'   vector with XPATH expressions serve as keys to match metadata information
+#'   and the XPATH expression that points to the correct location in the XML
+#'   document.}
+#'   \item{\code{$makeSpeakerNodes}}{Iterate through the chunks (i.e. list of 
+#'   character vectors in the field \code{chunks}) and add nodes for speakers
+#'   in the TEI document (in the field \code{xml})).}
 #'   \item{\code{$makeAgendaItemNodes}}{}
 #'   \item{\code{$makeXML()}}{}
 #'   \item{\code{$xmlify}}{}
@@ -37,6 +49,7 @@
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
 #' @importFrom XML newXMLNode saveXML xmlRoot xmlParse xmlTreeParse xmlValue
+#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_add_child
 PlenaryProtocol <- R6Class(
   
   "PlenaryProtocol",
@@ -50,7 +63,7 @@ PlenaryProtocol <- R6Class(
 	  outfile = NULL, # character
 		txt = NULL, # character
 		chunks = NULL, # list
-		xml = NULL, # character
+		xml = NULL, # an xml document (from xml2 package)
 		html = NULL, # character
 		speakerRegex = NULL, # list
 		speakerFactory = NULL, # list
@@ -254,36 +267,44 @@ PlenaryProtocol <- R6Class(
 		},
 		
 		makeSpeakerNodes = function(){
+		  
+		  # new nodes for speakers will be created as children of body node
+		  bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
+		  
+		  # iterate through speaker chunks and create speaker nodes
 		  self$speakerNodes <- lapply(
 		    1:length(self$chunks),
 		    function(i){
+		      
+		      # get chunk to precess and remove empty lines, if necessary
+		      # actually late to check here, but left for precaution
 		      textParas <- self$chunks[[i]]
+		      if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
+		      
 		      type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[i]])
 		      speakerAttrs <- self$speakerFactory[[type]](textParas[1])
 		      speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
 		      textParas[1] <- speakerAttrs[["text"]]
 		      speakerAttrs[["text"]] <- NULL
-		      speakerAttrs <- lapply(speakerAttrs, function(x) {
-		        Encoding(x) <- "UTF-8"
-		        x
-		      })
-		    speakerNode <- newXMLNode("sp", attrs = as.vector(speakerAttrs))
-		    speakerCallNode <- newXMLNode("speaker", speakerCall)
-		    if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
-		    speakerNodeParas <- lapply(
-		      textParas,
-		      function(para){
-		        if (grepl("^\\s*\\((?!Erste\\sBeratung)(.*?)\\)\\s*$", para, perl=T)){
-		          newXMLNode("stage", attrs = c(type="interjection"), para)
-		        } else {
-		          newXMLNode("p", para)
-		          # newXMLTextNode(para)
+		      speakerAttrs <- lapply(speakerAttrs, function(x){ Encoding(x) <- "UTF-8"; x })
+		      
+		      newSpeakerNode <- xml_add_child(.x = bodyNode, .value = "sp")
+		      xml_attrs(newSpeakerNode) <- as.vector(speakerAttrs)
+		      xml_add_child(newSpeakerNode, .value = "speaker", speakerCall)
+		      
+		      lapply(
+		        textParas,
+		        function(para){
+		          if (grepl("^\\s*\\(.*?\\)\\s*$", para, perl = TRUE)){
+		            # add element for interjection, if respective regex matches
+		            xml_add_child(newSpeakerNode, .value = "stage", type = "interjection", para)
+		          } else {
+		            xml_add_child(newSpeakerNode, .value = "p", para)
+		          }
 		        }
-		      }
-		    )
-		    addChildren(speakerNode, kids = c(speakerCallNode, speakerNodeParas))
-		    saveXML(speakerNode, prefix = NULL)
-		  })
+		      )
+		    }
+		  )
 		},
 		
 		makeAgendaItemNodes = function(maxLengthAgendaItemMatch = NULL, maxNcharAgendaItemDesc = 80){
@@ -386,23 +407,22 @@ PlenaryProtocol <- R6Class(
 		    })
 		},
 		
-		metadataToTei = function(){
-		  teiDoc <- xmlTreeParse(
-		    system.file("xml/teiTemplate.xml", package = "ctk.plpr"),
-		    useInternal = TRUE)
+		
+		metadataToTei = function(template = system.file("xml", "teiTemplate.xml", package = "frappp")){
+		  self$xml <- xml2::read_xml(template)
 		  lapply(
 		    names(self$xpath),
 		    function(x){
-		      teiNode <- getNodeSet(teiDoc, path=self$xpath[[x]])[[1]] 
-		      xmlValue(teiNode) <- self$metadata[[x]]
-		      return(NULL)
+		      teiNode <- xml2::xml_find_first(x = self$xml, xpath = self$xpath[[x]])
+		      xml2::xml_text(teiNode) <- as.character(self$metadata[[x]])
 		    })
-		  self$xml <- saveXML(teiDoc)
+		  invisible(self$xml)
 		},
+		
 
 		makeXML = function(){
 		  
-		  teiDoc <- xmlParse(self$xml, asText = TRUE)
+		  teiDoc <- xml2::read_xml(self$xml, asText = TRUE)
 		  bodyElement <- getNodeSet(teiDoc, path = "/TEI/text/body")[[1]]
 		  addChildren(
 		    bodyElement,
