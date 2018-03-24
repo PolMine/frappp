@@ -39,6 +39,7 @@ undoc_tmp <- tempfile()
 writeLines(text = plaintext, con = undoc_tmp)
 ```
 
+
 ## From Plain text to XML (TEI standard)
 
 ```{r}
@@ -46,9 +47,15 @@ library(frappp)
 ```
 
 ```{r}
-UNVR <- PlenaryProtocol$new(id = "A/71/PV.1")
+UNVR <- PlenaryProtocolParser$new()
 ```
 
+
+```{r}
+UNVR$stageRegex <- c(
+  end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
+)
+```
 
 ```{r}
 UNVR$speakerRegex <- list(
@@ -94,7 +101,7 @@ UNVR$agendaItemTypes <- c(any = "debate")
 ## Processing a Protocol
 
 ```{r}
-UNVR$readFile(filename = undoc_tmp)
+UNVR$readFile(filename = undoc_tmp, id = "A/71/PV.1")
 ```
 
 
@@ -132,11 +139,13 @@ UNVR$makeBody(agendaItems = TRUE)
 ```
 
 
+```{r}
+UNVR$browseXML()
+```
 
 ```{r}
-tempfile_xml <- tempfile()
-writeLines(text = as.character(UNVR$xml), con = tempfile_xml)
-browseURL(url = tempfile_xml)
+outfile <- tempfile()
+writeLines(text = as.character(UNVR$xml), con = outfile)
 ```
 
 

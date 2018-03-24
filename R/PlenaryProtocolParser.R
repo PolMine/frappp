@@ -1,4 +1,4 @@
-#' PlenaryProtocol class.
+#' Parser for Plenary Protocols.
 #' 
 #' @field filename name of the file to process (basename only)
 #' @field sourceDir the directory where the file to be processed resides
@@ -45,13 +45,13 @@
 #'   \item{\code{$xmlify}}{}
 #'   
 #'}
-#' @export PlenaryProtocol
+#' @export PlenaryProtocolParser
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
 #' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child
 #' @importFrom gsubfn strapply
 #' @importFrom R6 R6Class
-PlenaryProtocol <- R6Class(
+PlenaryProtocolParser <- R6Class(
   
   "PlenaryProtocol",
   
@@ -71,7 +71,7 @@ PlenaryProtocol <- R6Class(
 
 		preprocessingFunctions = NULL, # list
 		
-		interjectionRegex = NULL,
+		stageRegex = NULL,
 
 		speakerRegex = NULL, # list
 		speakerMismatchFile = NULL, # character
@@ -85,16 +85,23 @@ PlenaryProtocol <- R6Class(
 		
 		# methods 
 		
-		initialize = function(id, interjectionRegex = "^\\s*\\(.*?\\)\\s*$", xpath = teiXpath){
-		  self$id <- id
-		  self$interjectionRegex <- interjectionRegex
+		initialize = function(stageRegex = c(interjection = "^\\s*\\(.*?\\)\\s*$"), xpath = teiXpath){
+		  self$stageRegex <- stageRegex
 		  self$xpath = xpath
 		  invisible(self)
 		},
 		
 		
-		readFile = function(filename){
+		readFile = function(filename, id = basename(filename)){
+		  
+		  if (!is.null(self$chunks)) self$chunks <- NULL
+		  if (!is.null(self$xml)) self$xml <- NULL
+		  if (!is.null(self$html)) self$html <- NULL
+		  if (!is.null(self$metadata)) self$metadata <- NULL
+		  
 		  self$txt <- readLines(filename)  
+		  self$id <- id
+		  
 		  invisible(self)
 		},
 		
@@ -245,26 +252,24 @@ PlenaryProtocol <- R6Class(
 		    if (length(chunk) > 1){
 		      # Each chunk is turned into a list of character vectors. The assumption here is
 		      # that concatenating paragraphs is not performed for interjections.
-		      interjection <- grep(self$interjectionRegex, chunk)
-		      beforeInterjection <- interjection - 1
-		      cutPoints <- unique(c(1, beforeInterjection, interjection, length(chunk)))
+		      stage <- unique(unlist(lapply(self$stageRegex, function(regex) grep(regex, chunk))))
+		      cutPoints <- unique(c(1, stage - 1, stage, length(chunk)))
 		      cutPoints <- cutPoints[order(cutPoints)]
 		      sections <- cut(
 		        x = 1:length(chunk), breaks = cutPoints,
 		        include.lowest = TRUE, right = TRUE
 		        )
-		      paraSplit <- split(chunk, sections)
+		      subchunks <- split(chunk, sections)
 		      
 		      # iterate through the list of speech and interjections.
-		      retval <- lapply(paraSplit, self$paragraphize)
+		      retval <- lapply(subchunks, self$paragraphize)
 		      return( unname(unlist(retval)) )
 		    } else {
 		      return( chunk )
 		    }
 		  }
-		  newChunks <- lapply(self$chunks, .processor)
-		  names(newChunks) <- names(self$chunks)
-		  self$chunks <- newChunks
+		  self$chunks <- lapply(self$chunks, .processor)
+		  invisible(self)
 		},
 		
 		
@@ -348,9 +353,11 @@ PlenaryProtocol <- R6Class(
 		  lapply(
 		    textParas,
 		    function(para){
-		      if (grepl("^\\s*\\(.*?\\)\\s*$", para, perl = TRUE)){
+		      stageRegexMatch <- sapply(self$stageRegex, function(regex) grepl(regex, para, perl = TRUE))
+		      if (any(stageRegexMatch)){
 		        # add element for interjection, if respective regex matches
-		        xml_add_child(newSpeakerNode, .value = "stage", type = "interjection", para)
+		        stageType <- names(stageRegexMatch)[stageRegexMatch][1]
+		        xml_add_child(newSpeakerNode, .value = "stage", type = stageType, para)
 		      } else {
 		        xml_add_child(newSpeakerNode, .value = "p", para)
 		      }
@@ -429,6 +436,31 @@ PlenaryProtocol <- R6Class(
 		  self$metadataToTei()
 		  self$makeXML()
 		},
+		
+		browseXML = function(){
+		  tmpfile <- tempfile()
+		  writeLines(text = as.character(self$xml), con = tmpfile)
+		  browseURL(url = tmpfile)
+		},
+		
+		
+		browseTXT = function(){
+		  body <- sprintf("<p>%s</p>", self$txt)
+		  html <- sprintf("<html><body>%s</body></html>", body)
+		  tmpfile <- tempfile(fileext = ".html")
+		  writeLines(text = html, con = tmpfile)
+		  browseURL(url = tmpfile)
+		},
+		
+		
+		showNcharHistogram = function(){
+		  hist(
+		    x = nchar(self$txt), las = 2, breaks = 1:max(nchar(self$txt)),
+		    main = "number of characters in lines",
+		    xlab = "nchar"
+		    )
+		},
+		
 		
 		regexContextInChunks = function(regex, ncharContext = 100, verbose = FALSE){
 		  
