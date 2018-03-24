@@ -1,5 +1,5 @@
 ---
-title: "Introducing the Framework for Parsing Plenary Protocols"
+title: "Introducing the Framework for Parsing Plenary Protocols (frappp)"
 author: "Andreas Blätte (andreas.blaette@uni-due.de)"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -11,21 +11,36 @@ editor_options:
   chunk_output_type: console
 ---
 
+# The workflow to generate XML 
+
+In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session in UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example  may illustrate the workflow for parsing plenary protocols using \code{frap}.
+
+The parser of the \code{frappp} package, i.e. the class \code{PlenarProtocolParser} is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.
+
+
 ## Preparing a plain text file
 
-```{r}
+There is a set of R packages to extract text from pdf documents, namely [Rpoppler](https://CRAN.R-project.org/package=Rpoppler ) and [pdftools](https://cran.r-project.org/package=pdftools). However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package \code{trickypdf}. It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine Project using the installation mechanism offered by the \code{devtools} package.
+
+```{r load_trickypdf}
+if (!"trickypdf" %in% installed.packages()[,"Package"]){
+  if (!"devtools" %in% installed.packages()[,"Package"]) install.packages("devtools")
+  devtools::install_github("PolMine/trickypdf")
+}
 library(trickypdf)
 ```
 
-```{r}
+The \code{trickypdf} package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assemply (A/71/PV.1). In interactive R session, have a look at the document, and consider two-column layout.
+
+```{r inspect_doc}
 doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
-UN <- trickypdf::PDF$new(filename_pdf = doc)
-if (interactive()) UN$show_pdf()
+if (interactive()) browseURL(doc)
 ```
 
+With other approaches for processing pdf, you would extract the text from the pdf document and have to invest some time to get rid of anything on the margins of the pdf document as a post-processing step. The \code{trickypdf} package allows you to define in advance the boxes with relevant information. The package documentation explains in more detail how you would do that. In our case, the following commands will get us the plain text out of the protocol of the General Assembly.
 
-```{r}
-# UN$add_box(page = 1, box = c(top = 380, height = 250, left = 52, width = 255))
+```{r extract_plaintext}
+UN <- trickypdf::PDF$new(filename_pdf = doc)
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 52, width = 255))
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
@@ -34,7 +49,9 @@ UN$get_text_from_boxes(paragraphs = FALSE)
 plaintext <- unname(unlist(UN$pages))
 ```
 
-```{r}
+The \code{PlenaryProtocolParser} takes text files as input. So we save the document to a temporary file.
+
+```{r save_plaintext_doc}
 undoc_tmp <- tempfile()
 writeLines(text = plaintext, con = undoc_tmp)
 ```
@@ -42,23 +59,29 @@ writeLines(text = plaintext, con = undoc_tmp)
 
 ## From Plain text to XML (TEI standard)
 
-```{r}
+Now we move to processing the document using the framework offered by the package \code{frappp}.
+
+```{r load_frap}
 library(frappp)
 ```
 
+The class that implements the workflow to process a plenary protocol is the \code{PlenaryProtocolParser} class. It is a class of the R6 class system. The notation of using R6 classes may be somewhat uncommon for many R users. Usually you will know the S3 and the S4 class system. To learn more about R6 classes, consult the [vignette of the R6 package](https://cran.r-project.org/web/packages/R6/vignettes/Introduction.html), the introduction to the different class systems in [Hadley Wickham's Advanced R Website](http://adv-r.had.co.nz/OO-essentials.html) is an excellent entry to understand the notion of reference classes.
+
+Compared to R's built-in reference classes (RefClass), R6 is somewhat more efficient. But in fact the biggest advantage of R6 is that you can include classes inheriting from the \code{PlenaryProtocolParser} class in other packages than \code{frapp}. Inheritance is possible across packages. So let us instantiate our parser for the General Assembly verbatim record. 
+
 ```{r}
-UNVR <- PlenaryProtocolParser$new()
+UNGAParser <- PlenaryProtocolParser$new()
 ```
 
+Processing the document requires two steps. First, we have to configure the the parser. This means that we supply a set of regular expressions to detect speakers, agenda items and instructions from the stage. Second, we process the individual document. 
 
-```{r}
-UNVR$stageRegex <- c(
-  end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
-)
-```
 
-```{r}
-UNVR$speakerRegex <- list(
+### Configuring the parser
+
+#### Defining regular expessions to detect speakers
+
+```{r speaker_regex}
+UNGAParser$speakerRegex <- list(
   
   pres = list(
     regex = "^(The\\s+President):\\s*(.+)$",
@@ -88,25 +111,36 @@ UNVR$speakerRegex <- list(
   
 )
 
-UNVR$speakerMismatch <- character()
+UNGAParser$speakerMismatch <- character()
 ```
 
 
-```{r}
-UNVR$agendaItemRegex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
-UNVR$agendaItemTypes <- c(any = "debate")
+#### Define regular expressions to detect calls for agenda items
+
+```{r agenda_item_regex}
+UNGAParser$agendaItemRegex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
+UNGAParser$agendaItemTypes <- c(any = "debate")
+```
+
+
+#### Define regular expressions to detect stage instructions
+
+```{r stage_regex}
+UNGAParser$stageRegex <- c(
+  end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
+)
 ```
 
 
 ## Processing a Protocol
 
-```{r}
-UNVR$readFile(filename = undoc_tmp, id = "A/71/PV.1")
+```{r read_file}
+UNGAParser$readFile(filename = undoc_tmp, id = "A/71/PV.1")
 ```
 
 
-```{r}
-UNVR$metadata <- list(
+```{r metadata}
+UNGAParser$metadata <- list(
   legislativePeriod = "71", # formally, sessions are not called legislative periods at the UN
   sessionNo = "1",
   date = "2016-09-03",
@@ -122,30 +156,30 @@ UNVR$metadata <- list(
 ```
 
 
-```{r}
-UNVR$preprocessing() # remove leading and and trailing spaces
-# UNVR$getMetadata() # returns a list with sessionNo, lp, date
+```{r preprocessing}
+UNGAParser$preprocessing() # remove leading and and trailing spaces
+# UNGAParser$getMetadata() # returns a list with sessionNo, lp, date
 # self$concatenateMultilineInterjections() # in package ctk.plpr
 ```
 
-```{r}
-UNVR$makeHeader()
+```{r make_header}
+UNGAParser$makeHeader()
 ```
 
-```{r}
-UNVR$splitBySpeakers()
-UNVR$reconstructParagraphs(exclude = "pres")
-UNVR$makeBody(agendaItems = TRUE)
+```{r make_body}
+UNGAParser$splitBySpeakers()
+UNGAParser$reconstructParagraphs(exclude = "pres")
+UNGAParser$makeBody(agendaItems = TRUE)
 ```
 
 
-```{r}
-UNVR$browseXML()
+```{r browse_xml}
+UNGAParser$browseXML()
 ```
 
-```{r}
+```{r write}
 outfile <- tempfile()
-writeLines(text = as.character(UNVR$xml), con = outfile)
+writeLines(text = as.character(UNGAParser$xml), con = outfile)
 ```
 
 

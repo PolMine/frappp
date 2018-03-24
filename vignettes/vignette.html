@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+
+<meta charset="utf-8" />
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="generator" content="pandoc" />
+
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<meta name="author" content="Andreas Blätte (andreas.blaette@uni-due.de)" />
+
+<meta name="date" content="2018-03-24" />
+
+<title>Introducing the Framework for Parsing Plenary Protocols (frappp)</title>
+
+
+
+<style type="text/css">code{white-space: pre;}</style>
+<style type="text/css">
+a.sourceLine { display: inline-block; line-height: 1.25; }
+a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
+a.sourceLine:empty { height: 1.2em; position: absolute; }
+.sourceCode { overflow: visible; }
+code.sourceCode { white-space: pre; position: relative; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+code.sourceCode { white-space: pre-wrap; }
+a.sourceLine { text-indent: -1em; padding-left: 1em; }
+}
+pre.numberSource a.sourceLine
+  { position: relative; }
+pre.numberSource a.sourceLine:empty
+  { position: absolute; }
+pre.numberSource a.sourceLine::before
+  { content: attr(data-line-number);
+    position: absolute; left: -5em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+    color: #aaaaaa;
+  }
+pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+div.sourceCode
+  {  }
+@media screen {
+a.sourceLine::before { text-decoration: underline; }
+}
+code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+code span.at { color: #7d9029; } /* Attribute */
+code span.bn { color: #40a070; } /* BaseN */
+code span.bu { } /* BuiltIn */
+code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+code span.ch { color: #4070a0; } /* Char */
+code span.cn { color: #880000; } /* Constant */
+code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+code span.dt { color: #902000; } /* DataType */
+code span.dv { color: #40a070; } /* DecVal */
+code span.er { color: #ff0000; font-weight: bold; } /* Error */
+code span.ex { } /* Extension */
+code span.fl { color: #40a070; } /* Float */
+code span.fu { color: #06287e; } /* Function */
+code span.im { } /* Import */
+code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+code span.op { color: #666666; } /* Operator */
+code span.ot { color: #007020; } /* Other */
+code span.pp { color: #bc7a00; } /* Preprocessor */
+code span.sc { color: #4070a0; } /* SpecialChar */
+code span.ss { color: #bb6688; } /* SpecialString */
+code span.st { color: #4070a0; } /* String */
+code span.va { color: #19177c; } /* Variable */
+code span.vs { color: #4070a0; } /* VerbatimString */
+code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+</style>
+
+
+
+<style type="text/css">body {
+background-color: #fff;
+margin: 1em auto;
+max-width: 700px;
+overflow: visible;
+padding-left: 2em;
+padding-right: 2em;
+font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+font-size: 14px;
+line-height: 1.35;
+}
+#header {
+text-align: center;
+}
+#TOC {
+clear: both;
+margin: 0 0 10px 10px;
+padding: 4px;
+width: 400px;
+border: 1px solid #CCCCCC;
+border-radius: 5px;
+background-color: #f6f6f6;
+font-size: 13px;
+line-height: 1.3;
+}
+#TOC .toctitle {
+font-weight: bold;
+font-size: 15px;
+margin-left: 5px;
+}
+#TOC ul {
+padding-left: 40px;
+margin-left: -1.5em;
+margin-top: 5px;
+margin-bottom: 5px;
+}
+#TOC ul ul {
+margin-left: -2em;
+}
+#TOC li {
+line-height: 16px;
+}
+table {
+margin: 1em auto;
+border-width: 1px;
+border-color: #DDDDDD;
+border-style: outset;
+border-collapse: collapse;
+}
+table th {
+border-width: 2px;
+padding: 5px;
+border-style: inset;
+}
+table td {
+border-width: 1px;
+border-style: inset;
+line-height: 18px;
+padding: 5px 5px;
+}
+table, table th, table td {
+border-left-style: none;
+border-right-style: none;
+}
+table thead, table tr.even {
+background-color: #f7f7f7;
+}
+p {
+margin: 0.5em 0;
+}
+blockquote {
+background-color: #f6f6f6;
+padding: 0.25em 0.75em;
+}
+hr {
+border-style: solid;
+border: none;
+border-top: 1px solid #777;
+margin: 28px 0;
+}
+dl {
+margin-left: 0;
+}
+dl dd {
+margin-bottom: 13px;
+margin-left: 13px;
+}
+dl dt {
+font-weight: bold;
+}
+ul {
+margin-top: 0;
+}
+ul li {
+list-style: circle outside;
+}
+ul ul {
+margin-bottom: 0;
+}
+pre, code {
+background-color: #f7f7f7;
+border-radius: 3px;
+color: #333;
+white-space: pre-wrap; 
+}
+pre {
+border-radius: 3px;
+margin: 5px 0px 10px 0px;
+padding: 10px;
+}
+pre:not([class]) {
+background-color: #f7f7f7;
+}
+code {
+font-family: Consolas, Monaco, 'Courier New', monospace;
+font-size: 85%;
+}
+p > code, li > code {
+padding: 2px 0px;
+}
+div.figure {
+text-align: center;
+}
+img {
+background-color: #FFFFFF;
+padding: 2px;
+border: 1px solid #DDDDDD;
+border-radius: 3px;
+border: 1px solid #CCCCCC;
+margin: 0 5px;
+}
+h1 {
+margin-top: 0;
+font-size: 35px;
+line-height: 40px;
+}
+h2 {
+border-bottom: 4px solid #f7f7f7;
+padding-top: 10px;
+padding-bottom: 2px;
+font-size: 145%;
+}
+h3 {
+border-bottom: 2px solid #f7f7f7;
+padding-top: 10px;
+font-size: 120%;
+}
+h4 {
+border-bottom: 1px solid #f7f7f7;
+margin-left: 8px;
+font-size: 105%;
+}
+h5, h6 {
+border-bottom: 1px solid #ccc;
+font-size: 105%;
+}
+a {
+color: #0033dd;
+text-decoration: none;
+}
+a:hover {
+color: #6666ff; }
+a:visited {
+color: #800080; }
+a:visited:hover {
+color: #BB00BB; }
+a[href^="http:"] {
+text-decoration: underline; }
+a[href^="https:"] {
+text-decoration: underline; }
+
+code > span.kw { color: #555; font-weight: bold; } 
+code > span.dt { color: #902000; } 
+code > span.dv { color: #40a070; } 
+code > span.bn { color: #d14; } 
+code > span.fl { color: #d14; } 
+code > span.ch { color: #d14; } 
+code > span.st { color: #d14; } 
+code > span.co { color: #888888; font-style: italic; } 
+code > span.ot { color: #007020; } 
+code > span.al { color: #ff0000; font-weight: bold; } 
+code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61717; background-color: #e3d2d2; } 
+</style>
+
+</head>
+
+<body>
+
+
+
+
+<h1 class="title toc-ignore">Introducing the Framework for Parsing Plenary Protocols (frappp)</h1>
+<h4 class="author"><em>Andreas Blätte (<a href="mailto:andreas.blaette@uni-due.de">andreas.blaette@uni-due.de</a>)</em></h4>
+<h4 class="date"><em>2018-03-24</em></h4>
+
+
+
+<div id="the-workflow-to-generate-xml" class="section level1">
+<h1>The workflow to generate XML</h1>
+<p>In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session in UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example may illustrate the workflow for parsing plenary protocols using .</p>
+<p>The parser of the  package, i.e. the class  is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.</p>
+<div id="preparing-a-plain-text-file" class="section level2">
+<h2>Preparing a plain text file</h2>
+<p>There is a set of R packages to extract text from pdf documents, namely <a href="https://CRAN.R-project.org/package=Rpoppler">Rpoppler</a> and <a href="https://cran.r-project.org/package=pdftools">pdftools</a>. However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package . It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine Project using the installation mechanism offered by the  package.</p>
+<div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="cf">if</span> (<span class="op">!</span><span class="st">&quot;trickypdf&quot;</span> <span class="op">%in%</span><span class="st"> </span><span class="kw">installed.packages</span>()[,<span class="st">&quot;Package&quot;</span>]){</a>
+<a class="sourceLine" id="cb1-2" data-line-number="2">  <span class="cf">if</span> (<span class="op">!</span><span class="st">&quot;devtools&quot;</span> <span class="op">%in%</span><span class="st"> </span><span class="kw">installed.packages</span>()[,<span class="st">&quot;Package&quot;</span>]) <span class="kw">install.packages</span>(<span class="st">&quot;devtools&quot;</span>)</a>
+<a class="sourceLine" id="cb1-3" data-line-number="3">  devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;PolMine/trickypdf&quot;</span>)</a>
+<a class="sourceLine" id="cb1-4" data-line-number="4">}</a>
+<a class="sourceLine" id="cb1-5" data-line-number="5"><span class="kw">library</span>(trickypdf)</a></code></pre></div>
+<pre><code>## Loading required package: knitr</code></pre>
+<p>The  package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assemply (A/71/PV.1). In interactive R session, have a look at the document, and consider two-column layout.</p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1">doc &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="dt">package =</span> <span class="st">&quot;trickypdf&quot;</span>, <span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;pdf&quot;</span>, <span class="st">&quot;UN_GeneralAssembly_2016.pdf&quot;</span>)</a>
+<a class="sourceLine" id="cb3-2" data-line-number="2"><span class="cf">if</span> (<span class="kw">interactive</span>()) <span class="kw">browseURL</span>(doc)</a></code></pre></div>
+<p>With other approaches for processing pdf, you would extract the text from the pdf document and have to invest some time to get rid of anything on the margins of the pdf document as a post-processing step. The  package allows you to define in advance the boxes with relevant information. The package documentation explains in more detail how you would do that. In our case, the following commands will get us the plain text out of the protocol of the General Assembly.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">UN &lt;-<span class="st"> </span>trickypdf<span class="op">::</span>PDF<span class="op">$</span><span class="kw">new</span>(<span class="dt">filename_pdf =</span> doc)</a>
+<a class="sourceLine" id="cb4-2" data-line-number="2">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">1</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">232</span>, <span class="dt">height =</span> <span class="dv">400</span>, <span class="dt">left =</span> <span class="dv">52</span>, <span class="dt">width =</span> <span class="dv">255</span>))</a>
+<a class="sourceLine" id="cb4-3" data-line-number="3">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">1</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">232</span>, <span class="dt">height =</span> <span class="dv">400</span>, <span class="dt">left =</span> <span class="dv">303</span>, <span class="dt">width =</span> <span class="dv">255</span>), <span class="dt">replace =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb4-4" data-line-number="4">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">2</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">80</span>, <span class="dt">height =</span> <span class="dv">595</span>, <span class="dt">left =</span> <span class="dv">52</span>, <span class="dt">width =</span> <span class="dv">255</span>))</a>
+<a class="sourceLine" id="cb4-5" data-line-number="5">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">2</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">80</span>, <span class="dt">height =</span> <span class="dv">595</span>, <span class="dt">left =</span> <span class="dv">303</span>, <span class="dt">width =</span> <span class="dv">255</span>), <span class="dt">replace =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb4-6" data-line-number="6">UN<span class="op">$</span><span class="kw">get_text_from_boxes</span>(<span class="dt">paragraphs =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb4-7" data-line-number="7">plaintext &lt;-<span class="st"> </span><span class="kw">unname</span>(<span class="kw">unlist</span>(UN<span class="op">$</span>pages))</a></code></pre></div>
+<p>The  takes text files as input. So we save the document to a temporary file.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1">undoc_tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
+<a class="sourceLine" id="cb5-2" data-line-number="2"><span class="kw">writeLines</span>(<span class="dt">text =</span> plaintext, <span class="dt">con =</span> undoc_tmp)</a></code></pre></div>
+</div>
+<div id="from-plain-text-to-xml-tei-standard" class="section level2">
+<h2>From Plain text to XML (TEI standard)</h2>
+<p>Now we move to processing the document using the framework offered by the package .</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">library</span>(frappp)</a></code></pre></div>
+<pre><code>## Loading required package: ctk</code></pre>
+<pre><code>## Loading required package: data.table</code></pre>
+<pre><code>## ctk 0.2.25</code></pre>
+<pre><code>## ... checking for TreeTagger ... OK
+## ... checking for Stanford CoreNLP ... OK</code></pre>
+<p>The class that implements the workflow to process a plenary protocol is the  class. It is a class of the R6 class system. The notation of using R6 classes may be somewhat uncommon for many R users. Usually you will know the S3 and the S4 class system. To learn more about R6 classes, consult the <a href="https://cran.r-project.org/web/packages/R6/vignettes/Introduction.html">vignette of the R6 package</a>, the introduction to the different class systems in <a href="http://adv-r.had.co.nz/OO-essentials.html">Hadley Wickham’s Advanced R Website</a> is an excellent entry to understand the notion of reference classes.</p>
+<p>Compared to R’s built-in reference classes (RefClass), R6 is somewhat more efficient. But in fact the biggest advantage of R6 is that you can include classes inheriting from the  class in other packages than . Inheritance is possible across packages. So let us instantiate our parser for the General Assembly verbatim record.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1">UNGAParser &lt;-<span class="st"> </span>PlenaryProtocolParser<span class="op">$</span><span class="kw">new</span>()</a></code></pre></div>
+<p>Processing the document requires two steps. First, we have to configure the the parser. This means that we supply a set of regular expressions to detect speakers, agenda items and instructions from the stage. Second, we process the individual document.</p>
+<div id="configuring-the-parser" class="section level3">
+<h3>Configuring the parser</h3>
+<div id="defining-regular-expessions-to-detect-speakers" class="section level4">
+<h4>Defining regular expessions to detect speakers</h4>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1">UNGAParser<span class="op">$</span>speakerRegex &lt;-<span class="st"> </span><span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb12-2" data-line-number="2">  </a>
+<a class="sourceLine" id="cb12-3" data-line-number="3">  <span class="dt">pres =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb12-4" data-line-number="4">    <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">s+President):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
+<a class="sourceLine" id="cb12-5" data-line-number="5">    <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
+<a class="sourceLine" id="cb12-6" data-line-number="6">      <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb12-7" data-line-number="7">        <span class="dt">who =</span> who,</a>
+<a class="sourceLine" id="cb12-8" data-line-number="8">        <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
+<a class="sourceLine" id="cb12-9" data-line-number="9">        <span class="dt">role =</span> <span class="st">&quot;presidency&quot;</span>,</a>
+<a class="sourceLine" id="cb12-10" data-line-number="10">        <span class="dt">position =</span> <span class="st">&quot;presidency&quot;</span>,</a>
+<a class="sourceLine" id="cb12-11" data-line-number="11">        <span class="dt">text =</span> txt</a>
+<a class="sourceLine" id="cb12-12" data-line-number="12">      )</a>
+<a class="sourceLine" id="cb12-13" data-line-number="13">    }</a>
+<a class="sourceLine" id="cb12-14" data-line-number="14">  ),</a>
+<a class="sourceLine" id="cb12-15" data-line-number="15">  </a>
+<a class="sourceLine" id="cb12-16" data-line-number="16">  <span class="dt">sg =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb12-17" data-line-number="17">    <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">sSecretary-General):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
+<a class="sourceLine" id="cb12-18" data-line-number="18">    <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
+<a class="sourceLine" id="cb12-19" data-line-number="19">      <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb12-20" data-line-number="20">        <span class="dt">who =</span> who,</a>
+<a class="sourceLine" id="cb12-21" data-line-number="21">        <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
+<a class="sourceLine" id="cb12-22" data-line-number="22">        <span class="dt">role =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
+<a class="sourceLine" id="cb12-23" data-line-number="23">        <span class="dt">position =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
+<a class="sourceLine" id="cb12-24" data-line-number="24">        <span class="dt">text =</span> txt</a>
+<a class="sourceLine" id="cb12-25" data-line-number="25">      )</a>
+<a class="sourceLine" id="cb12-26" data-line-number="26">    }</a>
+<a class="sourceLine" id="cb12-27" data-line-number="27">  )</a>
+<a class="sourceLine" id="cb12-28" data-line-number="28">  </a>
+<a class="sourceLine" id="cb12-29" data-line-number="29">)</a>
+<a class="sourceLine" id="cb12-30" data-line-number="30"></a>
+<a class="sourceLine" id="cb12-31" data-line-number="31">UNGAParser<span class="op">$</span>speakerMismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a></code></pre></div>
+</div>
+<div id="define-regular-expressions-to-detect-calls-for-agenda-items" class="section level4">
+<h4>Define regular expressions to detect calls for agenda items</h4>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" data-line-number="1">UNGAParser<span class="op">$</span>agendaItemRegex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
+<a class="sourceLine" id="cb13-2" data-line-number="2">UNGAParser<span class="op">$</span>agendaItemTypes &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a></code></pre></div>
+</div>
+<div id="define-regular-expressions-to-detect-stage-instructions" class="section level4">
+<h4>Define regular expressions to detect stage instructions</h4>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1">UNGAParser<span class="op">$</span>stageRegex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb14-2" data-line-number="2">  <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb14-3" data-line-number="3">)</a></code></pre></div>
+</div>
+</div>
+</div>
+<div id="processing-a-protocol" class="section level2">
+<h2>Processing a Protocol</h2>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">UNGAParser<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> undoc_tmp, <span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">UNGAParser<span class="op">$</span>metadata &lt;-<span class="st"> </span><span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb16-2" data-line-number="2">  <span class="dt">legislativePeriod =</span> <span class="st">&quot;71&quot;</span>, <span class="co"># formally, sessions are not called legislative periods at the UN</span></a>
+<a class="sourceLine" id="cb16-3" data-line-number="3">  <span class="dt">sessionNo =</span> <span class="st">&quot;1&quot;</span>,</a>
+<a class="sourceLine" id="cb16-4" data-line-number="4">  <span class="dt">date =</span> <span class="st">&quot;2016-09-03&quot;</span>,</a>
+<a class="sourceLine" id="cb16-5" data-line-number="5">  <span class="dt">birthday =</span> <span class="kw">as.character</span>(<span class="kw">Sys.Date</span>()),</a>
+<a class="sourceLine" id="cb16-6" data-line-number="6">  <span class="dt">package =</span> <span class="st">&quot;frappp&quot;</span>,</a>
+<a class="sourceLine" id="cb16-7" data-line-number="7">  <span class="dt">version =</span> <span class="kw">packageVersion</span>(<span class="st">&quot;frappp&quot;</span>),</a>
+<a class="sourceLine" id="cb16-8" data-line-number="8">  <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
+<a class="sourceLine" id="cb16-9" data-line-number="9">  <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
+<a class="sourceLine" id="cb16-10" data-line-number="10">  <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
+<a class="sourceLine" id="cb16-11" data-line-number="11">  <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
+<a class="sourceLine" id="cb16-12" data-line-number="12">  <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
+<a class="sourceLine" id="cb16-13" data-line-number="13">  )</a></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" data-line-number="1">UNGAParser<span class="op">$</span><span class="kw">preprocessing</span>() <span class="co"># remove leading and and trailing spaces</span></a>
+<a class="sourceLine" id="cb17-2" data-line-number="2"><span class="co"># UNGAParser$getMetadata() # returns a list with sessionNo, lp, date</span></a>
+<a class="sourceLine" id="cb17-3" data-line-number="3"><span class="co"># self$concatenateMultilineInterjections() # in package ctk.plpr</span></a></code></pre></div>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">UNGAParser<span class="op">$</span><span class="kw">makeHeader</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1">UNGAParser<span class="op">$</span><span class="kw">splitBySpeakers</span>()</a>
+<a class="sourceLine" id="cb19-2" data-line-number="2">UNGAParser<span class="op">$</span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a>
+<a class="sourceLine" id="cb19-3" data-line-number="3">UNGAParser<span class="op">$</span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">UNGAParser<span class="op">$</span><span class="kw">browseXML</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1">outfile &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
+<a class="sourceLine" id="cb21-2" data-line-number="2"><span class="kw">writeLines</span>(<span class="dt">text =</span> <span class="kw">as.character</span>(UNGAParser<span class="op">$</span>xml), <span class="dt">con =</span> outfile)</a></code></pre></div>
+</div>
+</div>
+
+
+
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+  (function () {
+    var script = document.createElement("script");
+    script.type = "text/javascript";
+    script.src  = "https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML";
+    document.getElementsByTagName("head")[0].appendChild(script);
+  })();
+</script>
+
+</body>
+</html>

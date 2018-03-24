@@ -16,7 +16,10 @@ Imports:
     gsubfn,
     xml2,
     trickypdf
+Suggests:
+    devtools
 LazyData: yes
+VignetteBuilder: knitr
 License: no distribution without the author's permission
 Collate:
     'frappp_package.R'
