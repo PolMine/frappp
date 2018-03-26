@@ -173,7 +173,7 @@
 #' @export PlenaryProtocolParser
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
-#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child
+#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child xml_find_all xml_name
 #' @importFrom gsubfn strapply strapplyc
 #' @importFrom R6 R6Class
 #' @importFrom markdown markdownToHTML
