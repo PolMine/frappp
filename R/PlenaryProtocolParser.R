@@ -66,21 +66,19 @@ PlenaryProtocolParser <- R6Class(
 		html = NULL, # character
 		
 		metadata = NULL, # list
+		chunkData = NULL,
 		xpath = NULL, # list
-		downloadReportFile = NULL, # character
 
 		preprocessingFunctions = NULL, # list
 		
 		stageRegex = NULL,
 
 		speakerRegex = NULL, # list
-		speakerMismatchFile = NULL, # character
 		speakerMismatch = NULL, # character
 		
 		agendaItemRegex = NULL, # list
 		agendaItemTypes = NULL, # character
 		agendaItemNodes = NULL, # list
-		agendaItemMismatchFile = NULL, # character
 		agendaItemMismatch = NULL, # list
 		
 		# methods 
@@ -150,6 +148,46 @@ PlenaryProtocolParser <- R6Class(
 		  warning("needs to be implemented for specific protocol types")
 		},
 		
+		getChunkData = function(maxLengthWho = 60){
+		  matchTables <- lapply(
+		    names(self$speakerRegex),
+		    function(speakerRegexType) {
+		      matchList <- strapply(
+		        self$txt,
+		        pattern = self$speakerRegex[[speakerRegexType]][["regex"]],
+		        FUN = self$speakerRegex[[speakerRegexType]][["fn"]],
+		        perl = TRUE
+		      )
+		      names(matchList) <- as.character(1:length(matchList))
+		      matchMatrix <- do.call(rbind, matchList)
+		      matchDf <- data.frame(
+		        regex = speakerRegexType,
+		        index = as.integer(rownames(matchMatrix)),
+		        matchMatrix,
+		        stringsAsFactors = FALSE
+		      )
+		      matchDf <- matchDf[which(nchar(matchDf[,"who"]) <= maxLengthWho),]
+		      matchDf
+		    }
+		  )
+		  matchTable <- do.call(rbind, matchTables)
+		  
+		  checkedMatches <- which(!matchTable[["who"]] %in% self$speakerMismatch)
+		  if (length(checkedMatches) != nrow(matchTable)) matchTable <- matchTable[checkedMatches,]
+		  
+		  matchTable <- matchTable[order(matchTable[["index"]]),]
+		  self$chunkData <- plyr::ddply(.data = matchTable, .variables = "index", .fun = function(df){
+		    if (nrow(df) > 1){
+		      firstRegexMatched <- names(self$speakerRegex)[which(names(self$speakerRegex) %in% df[["regex"]])][1]
+		      df <- df[which(df[["regex"]] == firstRegexMatched),]
+		      return(df[1,])
+		    } else {
+		      return(df)
+		    }
+		  })
+		  invisible(self)
+		},
+		
 		splitBySpeakers = function(maxLengthWho = 60){
 		  
 		  # The first step is to get the indices of the vector where a call to a speaker occurs.
@@ -158,27 +196,12 @@ PlenaryProtocolParser <- R6Class(
 		  # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
 		  # included in the field 'speakerMismatch' are discarded, too.
 		  
-		  startParas <- lapply(
-		    self$speakerRegex,
-		    function(speakerRegex) {
-		      matchlist <- strapply(self$txt, pattern = speakerRegex[["regex"]], FUN = speakerRegex[["fn"]], perl = TRUE)
-		      index <- which(sapply(matchlist, is.null) == FALSE) # where did the regex match?
-		      indexChecked <- sapply(index, function(i) if (nchar(matchlist[[i]]["who"]) < maxLengthWho) i else NA)
-		      if (any(is.na(indexChecked))) indexChecked <- indexChecked[!is.na(indexChecked)]
-		      indexChecked
-		    }
-		  )
+		  self$getChunkData(maxLengthWho = maxLengthWho)
 		  
-		  # We may see that a string is matched by regexes for two different types of
-		  # speakers. We resolve those double matches by removing matches from one
-		  # list.
-		  overlap <- which(startParas[["mp"]] %in% startParas[["gov"]] == TRUE)
-		  if (length(overlap) > 0) startParas[["gov"]] <- startParas[["gov"]][-overlap]
 
 		  # Intermediate step: We now turn the list of starting paragraphs into a
 		  # oredered, named character vector.
-		  startParas <- unlist(startParas)
-		  startParas <- startParas[order(startParas)]
+		  startParas <- df[["index"]]
 		  if (startParas[length(startParas)] != length(self$txt)){
 		    startParas <- c(startParas, length(self$txt))
 		  }
@@ -343,24 +366,24 @@ PlenaryProtocolParser <- R6Class(
 		
 		
 		makeSpeakerNode = function(chunkNo, parent){
-		  # remove empty lines, if necessary
 		  textParas <- self$chunks[[chunkNo]]
+		  # remove empty lines, if necessary
 		  if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
 		  
 		  type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunkNo]])
-		  speakerAttrs <- strapply(
-		    X = textParas[1],
-		    pattern = self$speakerRegex[[type]][["regex"]],
-		    FUN = self$speakerRegex[[type]][["fn"]]
-		  )[[1]]
-		  speakerCall <- gsub("^\\s*(.*?):.*$", "\\1:", textParas[1])
-		  textParas[1] <- speakerAttrs[["text"]]
-		  speakerAttrs <- speakerAttrs[which(names(speakerAttrs) != "text")]
+		  
+		  speakerAttrs <- unlist(self$chunkData[chunkNo,])
+		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "regex")]
+		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "index")]
+		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "text")]
 		  Encoding(speakerAttrs) <- "UTF-8" # just to be sure
 		  
+		  split <- strapplyc(textParas[1], "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
+		  textParas[1] <- split[2]
+
 		  newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
 		  xml_attrs(newSpeakerNode) <- speakerAttrs
-		  xml_add_child(newSpeakerNode, .value = "speaker", speakerCall)
+		  xml_add_child(newSpeakerNode, .value = "speaker", split[1])
 		  
 		  lapply(
 		    textParas,
@@ -439,14 +462,12 @@ PlenaryProtocolParser <- R6Class(
 		  # self$txt <- readLines(file.path(self$sourceDir, self$filename))
 		  self$preprocessing() # remove leading and and trailing spaces
 		  self$getMetadata() # returns a list with sessionNo, lp, date
-		  self$getDebate()
+		  # self$getDebate()
 		  self$splitBySpeakers()
 		  self$concatenateMultilineInterjections() # in package ctk.plpr
-		  self$concatenateParagraphs(exclude = "pres")
-		  self$makeSpeakerNodes()
-		  self$makeAgendaItemNodes()
-		  self$metadataToTei()
-		  self$makeXML()
+		  self$reconstructParagraphs(exclude = "pres")
+		  self$makeHeader()
+		  self$makeBody()
 		},
 		
 		browseXML = function(){
