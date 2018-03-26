@@ -48,7 +48,7 @@ UN$add_box(page = 1, box = c(top = 232, height = 400, left = 52, width = 255))
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
-UN$get_text_from_boxes(paragraphs = TRUE)
+UN$get_text_from_boxes(paragraphs = FALSE)
 plaintext <- unname(unlist(UN$pages))
 ```
 

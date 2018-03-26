@@ -283,6 +283,7 @@ PlenaryProtocolParser <- R6Class(
 		        FUN = self$speakerRegex[[speakerRegexType]][["fn"]],
 		        perl = TRUE
 		      )
+		      if (all(sapply(matchList, is.null))) return(NULL)
 		      names(matchList) <- as.character(1:length(matchList))
 		      matchMatrix <- do.call(rbind, matchList)
 		      matchDf <- data.frame(

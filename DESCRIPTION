@@ -14,7 +14,8 @@ Imports:
     stringi,
     gsubfn,
     xml2,
-    trickypdf
+    trickypdf,
+    markdown
 Suggests:
     devtools,
     knitr,
