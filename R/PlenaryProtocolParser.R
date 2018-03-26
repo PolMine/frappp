@@ -49,7 +49,7 @@
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
 #' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child
-#' @importFrom gsubfn strapply
+#' @importFrom gsubfn strapply strapplyc
 #' @importFrom R6 R6Class
 PlenaryProtocolParser <- R6Class(
   
@@ -92,12 +92,16 @@ PlenaryProtocolParser <- R6Class(
 		},
 		
 		
-		readFile = function(filename, id = basename(filename)){
+		readFile = function(
+		  filename, id = basename(filename),
+		  metadata = c(birthday = as.character(Sys.Date()), package = "frappp", version = as.character(packageVersion("frappp")))
+		  ){
 		  
 		  if (!is.null(self$chunks)) self$chunks <- NULL
 		  if (!is.null(self$xml)) self$xml <- NULL
 		  if (!is.null(self$html)) self$html <- NULL
-		  if (!is.null(self$metadata)) self$metadata <- NULL
+		  
+		  self$metadata <- metadata
 		  
 		  self$txt <- readLines(filename)  
 		  self$id <- id
@@ -125,7 +129,15 @@ PlenaryProtocolParser <- R6Class(
 		    txt <- self$preprocessingFunctions[[self$filename]](self$txt)
 		  }
 		  
-		  invisible(self$txt)
+		  invisible(self)
+		},
+		
+		addMetadata = function(data){
+		  if (is.null(names(data))) stop("the input character vector needs to be named")
+		  if (any(names(data) == "")) stop("all elements of the character vector need to be named")
+		  if (length(unique(names(data))) != length(names(data))) stop("all names of the character vectors neet to be unique")
+		  self$metadata <- c(self$metadata, data)
+		  invisible(self)
 		},
 		
 		
@@ -177,7 +189,7 @@ PlenaryProtocolParser <- R6Class(
 		  self$chunks <- split(self$txt, parasSpeechesFactor)
 		  names(self$chunks) <- names(startParas)[1:length(self$chunks)]
 		  
-		  invisible(self$chunks)
+		  invisible(self)
 		},
 		
 		
@@ -381,7 +393,7 @@ PlenaryProtocolParser <- R6Class(
 		      teiNode <- xml2::xml_find_first(x = self$xml, xpath = self$xpath[[x]])
 		      xml2::xml_text(teiNode) <- as.character(self$metadata[[x]])
 		    })
-		  invisible(self$xml)
+		  invisible(self)
 		},
 		
 		
@@ -443,6 +455,9 @@ PlenaryProtocolParser <- R6Class(
 		  browseURL(url = tmpfile)
 		},
 		
+		saveXML = function(filename){
+		  writeLines(text = as.character(PPP$xml), con = filename)
+		},
 		
 		browseTXT = function(){
 		  body <- sprintf("<p>%s</p>", self$txt)
