@@ -13,14 +13,14 @@ editor_options:
 
 ## A workflow to generate XML
 
-In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session in UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example  may illustrate the workflow for parsing plenary protocols using _frappp_.
+In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session of the UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example may illustrate the workflow for parsing plenary protocols using _frappp_.
 
-The parser of the _frappp_ package, i.e. the class _PlenarProtocolParser_ is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.
+The parser of the _frappp_ package, i.e. the class _PlenaryProtocolParser_ is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.
 
 
 ## Preparing a plain text file
 
-There is a set of R packages to extract text from pdf documents, namely [Rpoppler](https://CRAN.R-project.org/package=Rpoppler ) and [pdftools](https://cran.r-project.org/package=pdftools). However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package _trickypdf_. It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine Project using the installation mechanism offered by the _devtools_ package.
+There is a set of R packages to extract text from pdf documents, namely [Rpoppler](https://CRAN.R-project.org/package=Rpoppler ) and [pdftools](https://cran.r-project.org/package=pdftools). However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package _trickypdf_. It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine project using the installation mechanism offered by the _devtools_ package.
 
 ```{r load_trickypdf}
 if (!"trickypdf" %in% installed.packages()[,"Package"]){
@@ -31,7 +31,7 @@ library(trickypdf)
 ```
 
 
-The _trickypdf_ package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assemply (A/71/PV.1). In interactive R session, have a look at the document, and consider two-column layout.
+The _trickypdf_ package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assembly (A/71/PV.1). In interactive R session, have a look at the document, and consider the two-column layout.
 
 ```{r inspect_doc}
 doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
@@ -48,7 +48,7 @@ UN$add_box(page = 1, box = c(top = 232, height = 400, left = 52, width = 255))
 UN$add_box(page = 1, box = c(top = 232, height = 400, left = 303, width = 255), replace = FALSE)
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 52, width = 255))
 UN$add_box(page = 2, box = c(top = 80, height = 595, left = 303, width = 255), replace = FALSE)
-UN$get_text_from_boxes(paragraphs = FALSE)
+UN$get_text_from_boxes(paragraphs = TRUE)
 plaintext <- unname(unlist(UN$pages))
 ```
 
@@ -80,12 +80,12 @@ Now let us instantiate our parser. We will then configure it to process General 
 PPP <- PlenaryProtocolParser$new()
 ```
 
-Processing the document requires two steps. First, we have to configure the the parser. This means that we supply a set of regular expressions to detect speakers, agenda items and instructions from the stage. Second, we process the individual document. 
+Processing the document requires two steps. First, we have to configure the parser. This means that we supply a set of regular expressions to detect speakers, agenda items and instructions from the stage. Second, we process the individual document. 
 
 
 ### Configuring the parser
 
-#### Defining regular expessions to detect speakers
+#### Defining regular expressions to detect speakers
 
 The field `$speakerRegex` supplies the information to detect speakers and to extract information that will go into XML attributes later on. It is a named list of lists that need to offer a regular expression (length 1 character vector), and a function that returns a named character vector with information that will be used to construct XML attributes for speakers later on.
 
@@ -140,7 +140,7 @@ PPP$agendaItemTypes <- c(any = "debate")
 
 #### Define regular expressions to detect stage instructions
 
-To markup stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the _type_ attribute of the _stage_ element surrounding what has been matched will be the name of the regular expression.
+To mark-up stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the _type_ attribute of the _stage_ element surrounding what has been matched will be the name of the regular expression.
 
 ```{r stage_regex}
 PPP$stageRegex <- c(
@@ -210,13 +210,13 @@ Let's go. The first step is to read a file. We use the plain text file we used b
 PPP$readFile(filename = undoc_tmp, id = "A/71/PV.1")
 ```
 
-Second. The initialized document includes some default metadata values: The birthdy the document was parsed , the package used ("frappp") and the version of the package (see `PPP$metadata`). We add the metadata extracted before to these default metadata values. 
+Second. The initialized document includes some default metadata values: The birthday the document was parsed, the package used ("frappp") and the version of the package (see `PPP$metadata`). We add the metadata extracted before to these default metadata values. 
 
 ```{r}
 PPP$addMetadata(data = metadata)
 ```
 
-Third. We now generte the base TEI document by inserting the metadata into the TEI header. To do this, the parser uses the names of the character vector in the metadata to find matching XPath expressions in a character vector in the field xpath of the parser (`PPP$xpath`), using names. The respective XPath expression is used to find the correct place in the XML document for the piece of information of the metadata.
+Third. We now generate the base TEI document by inserting the metadata into the TEI header. To do this, the parser uses the names of the character vector in the metadata to find matching XPath expressions in a character vector in the field xpath of the parser (`PPP$xpath`), using names. The respective XPath expression is used to find the correct place in the XML document for the piece of information of the metadata.
 
 After running `$makeHeader()`, the field xml will contain the TEI document with the populated header (see `PPP$xml`, or `cat(as.character(PPP$xml))`).
 
@@ -224,13 +224,13 @@ After running `$makeHeader()`, the field xml will contain the TEI document with 
 PPP$makeHeader()
 ```
 
-Third. The raw text (in the field `PPP$txt`) may include some noise. A preprocessing method (`$preprocessin()`) will remove empty lines, and leading and trailing whitespace. It takes as input a list `replacements`, a list of length 2 character vectors that serve as input to `gsub` (parameters pattern and x, respectively), to perform usual cleanups.
+Third. The raw text (in the field `PPP$txt`) may include some noise. A pre-processing method (`$preprocessing()`) will remove empty lines, and leading and trailing whitespace. It takes as input a list `replacements`, a list of length 2 character vectors that serve as input to `gsub` (parameters pattern and x, respectively), to perform usual clean-ups.
 
 ```{r preprocessing}
-PPP$preprocessing() # remove leading and and trailing spaces
+PPP$preprocessing() # remove leading and trailing spaces
 ```
 
-Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (preprocessed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
+Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
 
 ```{r make_body}
 PPP$splitBySpeakers()
@@ -249,7 +249,7 @@ See `PPP$chunks[[2]]` to see the result of this procedure. When reconstructing p
 Sixth. All preparatory steps have been performed. We now insert the speakers and the text of their speeches into the body of the XML document already present in the `$xml` field. 
 
 ```{r}
-PPP$makeBody(agendaItems = TRUE)
+PPP$makeBody(agendaItems = FALSE)
 ```
 
 That's it! The XML document is in the `$xml` field of our class. You can either look at it by typing `cat(as.character(PPP$xml))`, if by using the convenience of a browser that is called with the `$browseXML()` method.
@@ -274,7 +274,7 @@ PPP$readFile(filename = undoc_tmp, id = "A/71/PV.1")$
   preprocessing()$
   splitBySpeakers()$
   reconstructParagraphs(exclude = "pres")$
-  makeBody(agendaItems = TRUE)$
+  makeBody(agendaItems = FALSE)$
   saveXML(filename = tempfile())
 ```
 
@@ -393,18 +393,18 @@ VerbatimRecordUNGA <- R6Class(
       metadata <- self$getMetadata(pdffile)
       if (verbose) message("... reading plain text file: ", txtfile)
       self$readFile(filename = txtfile, id = id)
-      if (verbose) message("... adding metadata that has beeen extracted")
+      if (verbose) message("... adding metadata that has been extracted")
       self$addMetadata(data = metadata)
       if (verbose) message("... making header")
       self$makeHeader()
-      if (verbose) message("... preprocessing plain text")
+      if (verbose) message("... pre-processing plain text")
       self$preprocessing()
       if (verbose) message("... splitting up by speakers")
       self$splitBySpeakers()
       if (verbose) message("... reconstructing paragraphs")
       self$reconstructParagraphs(exclude = "pres")
       if (verbose) message("... making body")
-      self$makeBody(agendaItems = TRUE)
+      self$makeBody(agendaItems = FALSE)
       if (verbose) message("... saving TEI document to file: ", teifile)
       self$saveXML(filename = xmlfile)
       invisible(self$xml)

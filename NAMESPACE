@@ -2,7 +2,6 @@
 
 export(Enhancer)
 export(PlenaryProtocolParser)
-export(PlenaryProtocolPipe)
 export(paragraphize)
 import(ctk)
 import(data.table)
