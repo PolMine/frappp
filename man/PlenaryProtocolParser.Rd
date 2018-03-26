@@ -6,7 +6,7 @@
 \alias{agendaItemTypes}
 \alias{teiXpath}
 \title{Parser for Plenary Protocols.}
-\format{An object of class \code{R6ClassGenerator} of length 24.}
+\format{\code{\link{R6Class}} object.}
 \usage{
 PlenaryProtocolParser
 }
@@ -71,31 +71,36 @@ agenda items; if a match for an agenda item is included in this vector, it
 will not be annotated}
 }}
 
+\section{Usage}{
+
+PPP <- PlenaryProtocolParser$new()
+}
+
 \section{Arguments}{
 
-\itemize{
-  \item{stageRegex}{named character vector with regular expressions to detect
+\describe{
+  \item{\code{stageRegex}}{named character vector with regular expressions to detect
   stage instructions (such as interjections, beginning/end of session, etc)}
-  \item{xpath}{named character vector of XPath expressions to find nodes in
+  \item{\code{xpath}}{named character vector of XPath expressions to find nodes in
   TEI document where metadata should be inserted}
-  \item{filename}{filename (full path) to read in / for output}
-  \item{id}{id of the document being processd}
-  \item{metadata}{named character vector with metainformation}
-  \item{replacements}{list of length 2 character vectors, providing regular expressions and replacements (as input to \code{gsub})}
-  \item{data}{additional metadata }
-  \item{maxLengthWho}{maximum length of speaker names, no annotation if name of speaker is longer than threshold}
-  \item{exclude}{types of speakers not to consider when reconstructing paragraphs}
-  \item{chunkNos}{integer vector, chunks in the field $chunks to process}
-  \item{parent}{an XML node, where to put speaker node}
-  \item{chunkNo}{integer vecotr, chunk in the field $chunks to process}
-  \item{maxNcharAgendaItemDesc}{maximum number of characters to extract as value of attribute describing an agenda item}
-  \item{template}{filename of a template of a TEI document}
-  \item{agendaItems}{logical, whether to annotate agenda items}
-  \item{txtfile}{input plain text file (full filename)}
-  \item{xmlfile}{output XML file (full filename)}
-  \item{regex}{a regular expression}
-  \item{ncharContext}{integer, number of characters in the context of regex}
-  \item{verbose}{logical, whether to output messages }
+  \item{\code{filename}}{filename (full path) to read in / for output}
+  \item{\code{id}}{id of the document being processd}
+  \item{\code{metadata}}{named character vector with metainformation}
+  \item{\code{replacements}}{list of length 2 character vectors, providing regular expressions and replacements (as input to \code{gsub})}
+  \item{\code{data}}{additional metadata }
+  \item{\code{maxLengthWho}}{maximum length of speaker names, no annotation if name of speaker is longer than threshold}
+  \item{\code{exclude}}{types of speakers not to consider when reconstructing paragraphs}
+  \item{\code{chunkNos}}{integer vector, chunks in the field $chunks to process}
+  \item{\code{parent}}{an XML node, where to put speaker node}
+  \item{\code{chunkNo}}{integer vecotr, chunk in the field $chunks to process}
+  \item{\code{maxNcharAgendaItemDesc}}{maximum number of characters to extract as value of attribute describing an agenda item}
+  \item{\code{template}}{filename of a template of a TEI document}
+  \item{\code{agendaItems}}{logical, whether to annotate agenda items}
+  \item{\code{txtfile}}{input plain text file (full filename)}
+  \item{\code{xmlfile}}{output XML file (full filename)}
+  \item{\code{regex}}{a regular expression}
+  \item{\code{ncharContext}}{integer, number of characters in the context of regex}
+  \item{\code{verbose}}{logical, whether to output messages }
 }
 }
 
@@ -170,4 +175,35 @@ will not be annotated}
 }
 }
 
+\examples{
+PPP <- PlenaryProtocolParser$new()
+PPP$speakerRegex <- list(
+  pres = list(
+    regex = "^(The\\\\s+President):\\\\s*(.+)$",
+    fn = function(who, txt) c(who = who, role = "presidency", text = txt)
+  ),
+  sg = list(
+    regex = "^(The\\\\sSecretary-General):\\\\s*(.+)$",
+    fn = function(who, txt) c(who = who, role = "sg", text = txt)
+  )
+)
+PPP$speakerMismatch <- character()
+PPP$agendaItemRegex <- c(any = "^Item\\\\s+\\\\d+\\\\sof.*agenda.*$")
+PPP$agendaItemTypes <- c(any = "debate")
+PPP$stageRegex <- c(end = "^\\\\s*The\\\\s+meeting\\\\s+rose\\\\s+at\\\\s+\\\\d+\\\\s[ap]\\\\.m\\\\.\\\\s*$")
+
+PPP$readFile(filename = system.file(package = "frappp", "txt", "UNGA_71_1.txt"))
+PPP$addMetadata(
+  c(legislativePeriod = "71", sessionNo = "1", date = "2016-09-13",
+  publisher = "UN", url = "www.un.org", filetype = "pdf", retrievalDate = "2018-03-15"
+  )
+)
+PPP$makeHeader()
+PPP$preprocessing()
+PPP$splitBySpeakers()
+PPP$reconstructParagraphs()
+PPP$makeBody(agendaItems = TRUE)
+outfile <- tempfile()
+cat(as.character(PPP$xml))
+}
 \keyword{datasets}
