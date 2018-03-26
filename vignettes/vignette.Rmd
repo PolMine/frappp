@@ -2,7 +2,7 @@
 title: "Introducing the Framework for Parsing Plenary Protocols (frappp)"
 author: "Andreas Blätte (andreas.blaette@uni-due.de)"
 date: "`r Sys.Date()`"
-output: rmarkdown::html_vignette
+output: rmarkdown::pdf_document
 vignette: >
   %\VignetteIndexEntry{Introducing the Framework for Parsing Plenary Protocols}
   %\VignetteEncoding{UTF-8}
@@ -13,14 +13,14 @@ editor_options:
 
 ## A workflow to generate XML
 
-In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session in UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example  may illustrate the workflow for parsing plenary protocols using \code{frappp}.
+In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session in UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example  may illustrate the workflow for parsing plenary protocols using _frappp_.
 
-The parser of the \code{frappp} package, i.e. the class \code{PlenarProtocolParser} is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.
+The parser of the _frappp_ package, i.e. the class _PlenarProtocolParser_ is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.
 
 
 ## Preparing a plain text file
 
-There is a set of R packages to extract text from pdf documents, namely [Rpoppler](https://CRAN.R-project.org/package=Rpoppler ) and [pdftools](https://cran.r-project.org/package=pdftools). However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package \code{trickypdf}. It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine Project using the installation mechanism offered by the \code{devtools} package.
+There is a set of R packages to extract text from pdf documents, namely [Rpoppler](https://CRAN.R-project.org/package=Rpoppler ) and [pdftools](https://cran.r-project.org/package=pdftools). However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package _trickypdf_. It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine Project using the installation mechanism offered by the _devtools_ package.
 
 ```{r load_trickypdf}
 if (!"trickypdf" %in% installed.packages()[,"Package"]){
@@ -31,14 +31,14 @@ library(trickypdf)
 ```
 
 
-The \code{trickypdf} package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assemply (A/71/PV.1). In interactive R session, have a look at the document, and consider two-column layout.
+The _trickypdf_ package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assemply (A/71/PV.1). In interactive R session, have a look at the document, and consider two-column layout.
 
 ```{r inspect_doc}
 doc <- system.file(package = "trickypdf", "extdata", "pdf", "UN_GeneralAssembly_2016.pdf")
 if (interactive()) browseURL(doc)
 ```
 
-With other approaches for processing pdf, you would extract the text from the pdf document and have to invest some time to get rid of anything on the margins of the pdf document as a post-processing step. The \code{trickypdf} package allows you to define in advance the boxes with relevant information. The package documentation explains in more detail how you would do that. 
+With other approaches for processing pdf, you would extract the text from the pdf document and have to invest some time to get rid of anything on the margins of the pdf document as a post-processing step. The _trickypdf_ package allows you to define in advance the boxes with relevant information. The package documentation explains in more detail how you would do that. 
 
 In our case, the following commands will get us the plain text out of the protocol of the General Assembly.
 
@@ -52,7 +52,7 @@ UN$get_text_from_boxes(paragraphs = FALSE)
 plaintext <- unname(unlist(UN$pages))
 ```
 
-The \code{PlenaryProtocolParser} takes plain text files as input. So we save the document to a temporary file.
+The _PlenaryProtocolParser_ takes plain text files as input. So we save the document to a temporary file.
 
 ```{r save_plaintext_doc}
 undoc_tmp <- tempfile()
@@ -62,17 +62,17 @@ writeLines(text = plaintext, con = undoc_tmp)
 
 ## From Plain text to XML (TEI standard)
 
-Now we move to processing the document using the framework offered by the package \code{frappp}.
+Now we move to processing the document using the framework offered by the package _frappp_.
 
 ```{r load_frap}
 library(frappp)
 ```
 
-The class that implements the workflow to process a plenary protocol is the \code{PlenaryProtocolParser} class. It is a class of the R6 class system.
+The class that implements the workflow to process a plenary protocol is the _PlenaryProtocolParser_ class. It is a class of the R6 class system.
 
 The notation of using R6 classes may be somewhat uncommon for many R users. Usually you will know the S3 and the S4 class system. To learn more about R6 classes, consult the [vignette of the R6 package](https://cran.r-project.org/web/packages/R6/vignettes/Introduction.html), and the introduction to the different class systems in [Hadley Wickham's Advanced R Online Book](https://adv-r.hadley.nz/r6.html). It offers an excellent entry to understand the notion of reference classes (there is also a [hard copy of the book](https://www.crcpress.com/Advanced-R/Wickham/p/book/9781466586963)).
 
-Compared to R's built-in reference classes (RefClass), R6 is more efficient (see the vignette on [R6 and Reference class performance tests](https://cran.r-project.org/web/packages/R6/vignettes/Performance.html)). But in fact, the biggest advantage of R6 is that you can include classes inheriting from the \code{PlenaryProtocolParser} class in other packages than \code{frapp}. R6 allows inheritance across packages. This is essential about this package: It is intended to serve as a basis for projects that develop corpora of plenary protocols.
+Compared to R's built-in reference classes (RefClass), R6 is more efficient (see the vignette on [R6 and Reference class performance tests](https://cran.r-project.org/web/packages/R6/vignettes/Performance.html)). But in fact, the biggest advantage of R6 is that you can include classes inheriting from the _PlenaryProtocolParser_ class in other packages than _frapp_. R6 allows inheritance across packages. This is essential about this package: It is intended to serve as a basis for projects that develop corpora of plenary protocols.
 
 Now let us instantiate our parser. We will then configure it to process General Assembly verbatim records. 
 
@@ -130,7 +130,7 @@ PPP$speakerMismatch <- character()
 
 #### Define regular expressions to detect calls for agenda items
 
-Detecting calls to agenda items is optional.  The body of a document can also be created with `$makeBody(agendaItems = FALSE)`. For detecting agenda item calls, define the field \code{agendaItemRegex} as a named character vector of (alternative) regular expressions that will match a call to an agenda item.
+Detecting calls to agenda items is optional.  The body of a document can also be created with `$makeBody(agendaItems = FALSE)`. For detecting agenda item calls, define the field _agendaItemRegex_ as a named character vector of (alternative) regular expressions that will match a call to an agenda item.
 
 ```{r agenda_item_regex}
 PPP$agendaItemRegex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
@@ -140,7 +140,7 @@ PPP$agendaItemTypes <- c(any = "debate")
 
 #### Define regular expressions to detect stage instructions
 
-To markup stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the \code{type} attribute of the \code{stage} element surrounding what has been matched will be the name of the regular expression.
+To markup stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the _type_ attribute of the _stage_ element surrounding what has been matched will be the name of the regular expression.
 
 ```{r stage_regex}
 PPP$stageRegex <- c(
@@ -151,7 +151,7 @@ PPP$stageRegex <- c(
 
 ## Processing a Protocol
 
-We are now ready to parse our first plenary protocol. Once the parser has been initialized, the user intervention that is required is minimal. The whole idea behind \code{frappp} is to automate parsing plenary protocols, thus making the procedure reproducible. 
+We are now ready to parse our first plenary protocol. Once the parser has been initialized, the user intervention that is required is minimal. The whole idea behind _frappp_ is to automate parsing plenary protocols, thus making the procedure reproducible. 
 
 However, the parser requires the metadata of the document to generate a telling header. But its generic version does not have a method to extract the relevant information from the document. So we write a function that does this, based on the original pdf document.
 
@@ -450,7 +450,7 @@ lapply(
   })
 ```
 
-Enjoy using \code{frappp}!
+Enjoy using _frappp_!
 
 
 ## Annexes
