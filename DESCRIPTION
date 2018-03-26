@@ -28,4 +28,5 @@ Collate:
     'PlenaryProtocolParser.R'
     'PlenaryProtocolPipe.R'
     'Enhancer.R'
+    'utils.R'
 RoxygenNote: 6.0.1
