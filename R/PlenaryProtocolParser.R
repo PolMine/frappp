@@ -176,6 +176,7 @@
 #' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child
 #' @importFrom gsubfn strapply strapplyc
 #' @importFrom R6 R6Class
+#' @importFrom markdown markdownToHTML
 PlenaryProtocolParser <- R6Class(
   
   "PlenaryProtocol",
@@ -582,6 +583,12 @@ PlenaryProtocolParser <- R6Class(
 		  browseURL(url = tmpfile)
 		},
 		
+		browseHTML = function(){
+		  doc <- self$as.html()
+		  htmlfile <- tempfile(fileext = ".html")
+		  cat(doc, file = htmlfile)
+		  browseURL(htmlfile)
+		},
 		
 		showNcharHistogram = function(){
 		  hist(
@@ -625,6 +632,57 @@ PlenaryProtocolParser <- R6Class(
 		    regexMatchDf[,"filename"] <- filename    
 		  }
 		  regexMatchDf  
+		},
+		
+		as.html = function(){
+		  data <- lapply(self$xpath, function(xpath) xml_text(xml_find_all(self$xml, xpath = xpath)[[1]]))
+		  protocolTitle <- sprintf(
+		    "# %s %s/%s (%s)",
+		    data$title, data$legislativePeriod, data$sessionNo, data$date
+		  )
+		  debatesList <- lapply(
+		    xml_find_all(self$xml, xpath = '//div[@type="agenda_item"]'),
+		    function(topicNode){
+		      debateTextList <- lapply(
+		        xml_children(topicNode),
+		        function(topicNodeChild){
+		          if (xml_name(topicNodeChild) == "sp"){
+		            speechMarkdownList <- lapply(
+		              xml_children(topicNodeChild),
+		              function(speakerNodeChild){
+		                if (xml_name(speakerNodeChild) == "speaker"){
+		                  return("")
+		                } else if (xml_name(speakerNodeChild) == "p"){
+		                  return(xml_text(speakerNodeChild))
+		                } else if (xml_name(speakerNodeChild) == "stage"){
+		                  return(paste("\n>", xml_text(speakerNodeChild), "\n", collapse=" "))
+		                }
+		              })
+		            speechMarkdown <- paste(speechMarkdownList, collapse = "\n\n")
+		            speakerCall <- paste0(xml_attrs(topicNodeChild), collapse = "/")
+		            speakerMarkdown <- paste("**", speakerCall, "**", sep = "")
+		            speech <- paste(speakerMarkdown, speechMarkdown, sep=": ")
+		            return(speech)
+		          } else if (xmlName(topicNodeChild) == "stage"){
+		            return(paste("*", xml_text(topicNodeChild), "*"))
+		          }
+		        })
+		      debateText <- paste(debateTextList, collapse = "\n\n")
+		      headingAgendaItem <- paste(
+		        "## Agenda Item ",
+		        xml_attrs(topicNode)["n"], ': "',
+		        xml_attrs(topicNode)["desc"], '" (<i>',
+		        xml_attrs(topicNode)["what"], "</i>) ##",
+		        sep = "")
+		      paste(headingAgendaItem, debateText, sep="\n\n")
+		    })
+		  protocolText <- paste(unlist(debatesList), sep = "\n\n", collapse = "\n\n")
+		  protocolMarkdown <- paste(protocolTitle, protocolText, sep = "\n\n")
+		  protocolHtml <- markdown::markdownToHTML(text = protocolMarkdown)  
+		  protocolHtml <- gsub("<.?ul>", "", protocolHtml)
+		  protocolHtml <- gsub("<li>", "<p>", protocolHtml)
+		  protocolHtml <- gsub("</li>", "</p>", protocolHtml)
+		  protocolHtml
 		}
 		
   )
