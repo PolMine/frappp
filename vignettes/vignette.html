@@ -12,7 +12,7 @@
 
 <meta name="author" content="Andreas Blätte (andreas.blaette@uni-due.de)" />
 
-<meta name="date" content="2018-03-26" />
+<meta name="date" content="2018-03-27" />
 
 <title>Introducing the Framework for Parsing Plenary Protocols (frappp)</title>
 
@@ -280,28 +280,29 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 <h1 class="title toc-ignore">Introducing the Framework for Parsing Plenary Protocols (frappp)</h1>
 <h4 class="author"><em>Andreas Blätte (<a href="mailto:andreas.blaette@uni-due.de">andreas.blaette@uni-due.de</a>)</em></h4>
-<h4 class="date"><em>2018-03-26</em></h4>
+<h4 class="date"><em>2018-03-27</em></h4>
 
 
 
 <div id="a-workflow-to-generate-xml" class="section level2">
 <h2>A workflow to generate XML</h2>
-<p>In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session in UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example may illustrate the workflow for parsing plenary protocols using .</p>
-<p>The parser of the  package, i.e. the class  is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.</p>
+<p>In this vignette, we show how to generate an XML document of a plenary protocol. The example chosen is a verbatim record of a short session of the UN General Assembly. Due to the structural similarity of all kinds of plenary protocols (including the verbatim records of UN bodies), this example may illustrate the workflow for parsing plenary protocols using <em>frappp</em>.</p>
+<p>The parser of the <em>frappp</em> package, i.e. the class <em>PlenaryProtocolParser</em> is designed to process plain text documents. However, the usual scenario is that the protocol to be processed is available as a pdf document. In order to walk through the steps we usually encounter, we start with turning a pdf document into plain text.</p>
 </div>
 <div id="preparing-a-plain-text-file" class="section level2">
 <h2>Preparing a plain text file</h2>
-<p>There is a set of R packages to extract text from pdf documents, namely <a href="https://CRAN.R-project.org/package=Rpoppler">Rpoppler</a> and <a href="https://cran.r-project.org/package=pdftools">pdftools</a>. However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package . It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine Project using the installation mechanism offered by the  package.</p>
+<p>There is a set of R packages to extract text from pdf documents, namely <a href="https://CRAN.R-project.org/package=Rpoppler">Rpoppler</a> and <a href="https://cran.r-project.org/package=pdftools">pdftools</a>. However, a typical issue with the pdf of plenary protocols is that documents have a two-column layout. To deal with this special kind of situation, we have developed the package <em>trickypdf</em>. It is not yet available at CRAN, but it can be installed in convenient manner from the GitHub presence of the PolMine project using the installation mechanism offered by the <em>devtools</em> package.</p>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb1-1" data-line-number="1"><span class="cf">if</span> (<span class="op">!</span><span class="st">&quot;trickypdf&quot;</span> <span class="op">%in%</span><span class="st"> </span><span class="kw">installed.packages</span>()[,<span class="st">&quot;Package&quot;</span>]){</a>
 <a class="sourceLine" id="cb1-2" data-line-number="2">  <span class="cf">if</span> (<span class="op">!</span><span class="st">&quot;devtools&quot;</span> <span class="op">%in%</span><span class="st"> </span><span class="kw">installed.packages</span>()[,<span class="st">&quot;Package&quot;</span>]) <span class="kw">install.packages</span>(<span class="st">&quot;devtools&quot;</span>)</a>
 <a class="sourceLine" id="cb1-3" data-line-number="3">  devtools<span class="op">::</span><span class="kw">install_github</span>(<span class="st">&quot;PolMine/trickypdf&quot;</span>)</a>
 <a class="sourceLine" id="cb1-4" data-line-number="4">}</a>
 <a class="sourceLine" id="cb1-5" data-line-number="5"><span class="kw">library</span>(trickypdf)</a></code></pre></div>
 <pre><code>## Loading required package: knitr</code></pre>
-<p>The  package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assemply (A/71/PV.1). In interactive R session, have a look at the document, and consider two-column layout.</p>
+<p>The <em>trickypdf</em> package includes some pdf documents serving as example. The document we will process is the first meeting of the 2016 UN General Assembly (A/71/PV.1). In interactive R session, have a look at the document, and consider the two-column layout.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb3-1" data-line-number="1">doc &lt;-<span class="st"> </span><span class="kw">system.file</span>(<span class="dt">package =</span> <span class="st">&quot;trickypdf&quot;</span>, <span class="st">&quot;extdata&quot;</span>, <span class="st">&quot;pdf&quot;</span>, <span class="st">&quot;UN_GeneralAssembly_2016.pdf&quot;</span>)</a>
 <a class="sourceLine" id="cb3-2" data-line-number="2"><span class="cf">if</span> (<span class="kw">interactive</span>()) <span class="kw">browseURL</span>(doc)</a></code></pre></div>
-<p>With other approaches for processing pdf, you would extract the text from the pdf document and have to invest some time to get rid of anything on the margins of the pdf document as a post-processing step. The  package allows you to define in advance the boxes with relevant information. The package documentation explains in more detail how you would do that. In our case, the following commands will get us the plain text out of the protocol of the General Assembly.</p>
+<p>With other approaches for processing pdf, you would extract the text from the pdf document and have to invest some time to get rid of anything on the margins of the pdf document as a post-processing step. The <em>trickypdf</em> package allows you to define in advance the boxes with relevant information. The package documentation explains in more detail how you would do that.</p>
+<p>In our case, the following commands will get us the plain text out of the protocol of the General Assembly.</p>
 <div class="sourceCode" id="cb4"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb4-1" data-line-number="1">UN &lt;-<span class="st"> </span>trickypdf<span class="op">::</span>PDF<span class="op">$</span><span class="kw">new</span>(<span class="dt">filename_pdf =</span> doc)</a>
 <a class="sourceLine" id="cb4-2" data-line-number="2">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">1</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">232</span>, <span class="dt">height =</span> <span class="dv">400</span>, <span class="dt">left =</span> <span class="dv">52</span>, <span class="dt">width =</span> <span class="dv">255</span>))</a>
 <a class="sourceLine" id="cb4-3" data-line-number="3">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">1</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">232</span>, <span class="dt">height =</span> <span class="dv">400</span>, <span class="dt">left =</span> <span class="dv">303</span>, <span class="dt">width =</span> <span class="dv">255</span>), <span class="dt">replace =</span> <span class="ot">FALSE</span>)</a>
@@ -309,304 +310,310 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <a class="sourceLine" id="cb4-5" data-line-number="5">UN<span class="op">$</span><span class="kw">add_box</span>(<span class="dt">page =</span> <span class="dv">2</span>, <span class="dt">box =</span> <span class="kw">c</span>(<span class="dt">top =</span> <span class="dv">80</span>, <span class="dt">height =</span> <span class="dv">595</span>, <span class="dt">left =</span> <span class="dv">303</span>, <span class="dt">width =</span> <span class="dv">255</span>), <span class="dt">replace =</span> <span class="ot">FALSE</span>)</a>
 <a class="sourceLine" id="cb4-6" data-line-number="6">UN<span class="op">$</span><span class="kw">get_text_from_boxes</span>(<span class="dt">paragraphs =</span> <span class="ot">FALSE</span>)</a>
 <a class="sourceLine" id="cb4-7" data-line-number="7">plaintext &lt;-<span class="st"> </span><span class="kw">unname</span>(<span class="kw">unlist</span>(UN<span class="op">$</span>pages))</a></code></pre></div>
-<p>The  takes text files as input. So we save the document to a temporary file.</p>
+<p>The <em>PlenaryProtocolParser</em> takes plain text files as input. So we save the document to a temporary file.</p>
 <div class="sourceCode" id="cb5"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb5-1" data-line-number="1">undoc_tmp &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
 <a class="sourceLine" id="cb5-2" data-line-number="2"><span class="kw">writeLines</span>(<span class="dt">text =</span> plaintext, <span class="dt">con =</span> undoc_tmp)</a></code></pre></div>
 </div>
 <div id="from-plain-text-to-xml-tei-standard" class="section level2">
 <h2>From Plain text to XML (TEI standard)</h2>
-<p>Now we move to processing the document using the framework offered by the package .</p>
+<p>Now we move to processing the document using the framework offered by the package <em>frappp</em>.</p>
 <div class="sourceCode" id="cb6"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb6-1" data-line-number="1"><span class="kw">library</span>(frappp)</a></code></pre></div>
-<pre><code>## Loading required package: ctk</code></pre>
 <pre><code>## Loading required package: data.table</code></pre>
-<pre><code>## ctk 0.2.25</code></pre>
-<pre><code>## ... checking for TreeTagger ... OK
-## ... checking for Stanford CoreNLP ... OK</code></pre>
-<p>The class that implements the workflow to process a plenary protocol is the  class. It is a class of the R6 class system. The notation of using R6 classes may be somewhat uncommon for many R users. Usually you will know the S3 and the S4 class system. To learn more about R6 classes, consult the <a href="https://cran.r-project.org/web/packages/R6/vignettes/Introduction.html">vignette of the R6 package</a>, the introduction to the different class systems in <a href="https://adv-r.hadley.nz/r6.html">Hadley Wickham’s Advanced R Online Book</a> is an excellent entry to understand the notion of reference classes (there is also a <a href="https://www.crcpress.com/Advanced-R/Wickham/p/book/9781466586963">hard copy of the book</a>).</p>
-<p>Compared to R’s built-in reference classes (RefClass), R6 is more efficient (see the vignette on <a href="https://cran.r-project.org/web/packages/R6/vignettes/Performance.html">R6 and Reference class performance tests</a>). But in fact the biggest advantage of R6 is that you can include classes inheriting from the  class in other packages than . R6 allows inheritance across packages. This is essential about this package: It is intended to serve as a basis for projects that develop corpora of plenary protocols.</p>
-<p>So far so good. Let us instantiate our parser. We will then configure it to process General Assembly verbatim records.</p>
-<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1">PPP &lt;-<span class="st"> </span>PlenaryProtocolParser<span class="op">$</span><span class="kw">new</span>()</a></code></pre></div>
-<p>Processing the document requires two steps. First, we have to configure the the parser. This means that we supply a set of regular expressions to detect speakers, agenda items and instructions from the stage. Second, we process the individual document.</p>
+<p>The class that implements the workflow to process a plenary protocol is the <em>PlenaryProtocolParser</em> class. It is a class of the R6 class system.</p>
+<p>The notation of using R6 classes may be somewhat uncommon for many R users. Usually you will know the S3 and the S4 class system. To learn more about R6 classes, consult the <a href="https://cran.r-project.org/web/packages/R6/vignettes/Introduction.html">vignette of the R6 package</a>, and the introduction to the different class systems in <a href="https://adv-r.hadley.nz/r6.html">Hadley Wickham’s Advanced R Online Book</a>. It offers an excellent entry to understand the notion of reference classes (there is also a <a href="https://www.crcpress.com/Advanced-R/Wickham/p/book/9781466586963">hard copy of the book</a>).</p>
+<p>Compared to R’s built-in reference classes (RefClass), R6 is more efficient (see the vignette on <a href="https://cran.r-project.org/web/packages/R6/vignettes/Performance.html">R6 and Reference class performance tests</a>). But in fact, the biggest advantage of R6 is that you can include classes inheriting from the <em>PlenaryProtocolParser</em> class in other packages than <em>frapp</em>. R6 allows inheritance across packages. This is essential about this package: It is intended to serve as a basis for projects that develop corpora of plenary protocols.</p>
+<p>Now let us instantiate our parser. We will then configure it to process General Assembly verbatim records.</p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb8-1" data-line-number="1">PPP &lt;-<span class="st"> </span>PlenaryProtocolParser<span class="op">$</span><span class="kw">new</span>()</a></code></pre></div>
+<p>Processing the document requires two steps. First, we have to configure the parser. This means that we supply a set of regular expressions to detect speakers, agenda items and instructions from the stage. Second, we process the individual document.</p>
 <div id="configuring-the-parser" class="section level3">
 <h3>Configuring the parser</h3>
-<div id="defining-regular-expessions-to-detect-speakers" class="section level4">
-<h4>Defining regular expessions to detect speakers</h4>
-<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1">PPP<span class="op">$</span>speakerRegex &lt;-<span class="st"> </span><span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb12-2" data-line-number="2">  </a>
-<a class="sourceLine" id="cb12-3" data-line-number="3">  <span class="dt">pres =</span> <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb12-4" data-line-number="4">    <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">s+President):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
-<a class="sourceLine" id="cb12-5" data-line-number="5">    <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
-<a class="sourceLine" id="cb12-6" data-line-number="6">      <span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb12-7" data-line-number="7">        <span class="dt">who =</span> who,</a>
-<a class="sourceLine" id="cb12-8" data-line-number="8">        <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
-<a class="sourceLine" id="cb12-9" data-line-number="9">        <span class="dt">role =</span> <span class="st">&quot;presidency&quot;</span>,</a>
-<a class="sourceLine" id="cb12-10" data-line-number="10">        <span class="dt">position =</span> <span class="st">&quot;presidency&quot;</span>,</a>
-<a class="sourceLine" id="cb12-11" data-line-number="11">        <span class="dt">text =</span> txt</a>
-<a class="sourceLine" id="cb12-12" data-line-number="12">      )</a>
-<a class="sourceLine" id="cb12-13" data-line-number="13">    }</a>
-<a class="sourceLine" id="cb12-14" data-line-number="14">  ),</a>
-<a class="sourceLine" id="cb12-15" data-line-number="15">  </a>
-<a class="sourceLine" id="cb12-16" data-line-number="16">  <span class="dt">sg =</span> <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb12-17" data-line-number="17">    <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">sSecretary-General):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
-<a class="sourceLine" id="cb12-18" data-line-number="18">    <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
-<a class="sourceLine" id="cb12-19" data-line-number="19">      <span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb12-20" data-line-number="20">        <span class="dt">who =</span> who,</a>
-<a class="sourceLine" id="cb12-21" data-line-number="21">        <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
-<a class="sourceLine" id="cb12-22" data-line-number="22">        <span class="dt">role =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
-<a class="sourceLine" id="cb12-23" data-line-number="23">        <span class="dt">position =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
-<a class="sourceLine" id="cb12-24" data-line-number="24">        <span class="dt">text =</span> txt</a>
-<a class="sourceLine" id="cb12-25" data-line-number="25">      )</a>
-<a class="sourceLine" id="cb12-26" data-line-number="26">    }</a>
-<a class="sourceLine" id="cb12-27" data-line-number="27">  )</a>
-<a class="sourceLine" id="cb12-28" data-line-number="28">  </a>
-<a class="sourceLine" id="cb12-29" data-line-number="29">)</a>
-<a class="sourceLine" id="cb12-30" data-line-number="30"></a>
-<a class="sourceLine" id="cb12-31" data-line-number="31">PPP<span class="op">$</span>speakerMismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a></code></pre></div>
+<div id="defining-regular-expressions-to-detect-speakers" class="section level4">
+<h4>Defining regular expressions to detect speakers</h4>
+<p>The field <code>$speakerRegex</code> supplies the information to detect speakers and to extract information that will go into XML attributes later on. It is a named list of lists that need to offer a regular expression (length 1 character vector), and a function that returns a named character vector with information that will be used to construct XML attributes for speakers later on.</p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb9-1" data-line-number="1">PPP<span class="op">$</span>speakerRegex &lt;-<span class="st"> </span><span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb9-2" data-line-number="2">  </a>
+<a class="sourceLine" id="cb9-3" data-line-number="3">  <span class="dt">pres =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb9-4" data-line-number="4">    <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">s+President):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
+<a class="sourceLine" id="cb9-5" data-line-number="5">    <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
+<a class="sourceLine" id="cb9-6" data-line-number="6">      <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb9-7" data-line-number="7">        <span class="dt">who =</span> who,</a>
+<a class="sourceLine" id="cb9-8" data-line-number="8">        <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
+<a class="sourceLine" id="cb9-9" data-line-number="9">        <span class="dt">role =</span> <span class="st">&quot;presidency&quot;</span>,</a>
+<a class="sourceLine" id="cb9-10" data-line-number="10">        <span class="dt">position =</span> <span class="st">&quot;presidency&quot;</span>,</a>
+<a class="sourceLine" id="cb9-11" data-line-number="11">        <span class="dt">text =</span> txt</a>
+<a class="sourceLine" id="cb9-12" data-line-number="12">      )</a>
+<a class="sourceLine" id="cb9-13" data-line-number="13">    }</a>
+<a class="sourceLine" id="cb9-14" data-line-number="14">  ),</a>
+<a class="sourceLine" id="cb9-15" data-line-number="15">  </a>
+<a class="sourceLine" id="cb9-16" data-line-number="16">  <span class="dt">sg =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb9-17" data-line-number="17">    <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">sSecretary-General):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
+<a class="sourceLine" id="cb9-18" data-line-number="18">    <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
+<a class="sourceLine" id="cb9-19" data-line-number="19">      <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb9-20" data-line-number="20">        <span class="dt">who =</span> who,</a>
+<a class="sourceLine" id="cb9-21" data-line-number="21">        <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
+<a class="sourceLine" id="cb9-22" data-line-number="22">        <span class="dt">role =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
+<a class="sourceLine" id="cb9-23" data-line-number="23">        <span class="dt">position =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
+<a class="sourceLine" id="cb9-24" data-line-number="24">        <span class="dt">text =</span> txt</a>
+<a class="sourceLine" id="cb9-25" data-line-number="25">      )</a>
+<a class="sourceLine" id="cb9-26" data-line-number="26">    }</a>
+<a class="sourceLine" id="cb9-27" data-line-number="27">  )</a>
+<a class="sourceLine" id="cb9-28" data-line-number="28">  </a>
+<a class="sourceLine" id="cb9-29" data-line-number="29">)</a></code></pre></div>
+<p>It is futile to seek for the regular expression that will always match perfectly. Sometimes, our regular expression will match unwantedly. A vector of speaker mismatches will be used to omit unwanted matches. In our case, we do not yet need that, however.</p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb10-1" data-line-number="1">PPP<span class="op">$</span>speakerMismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a></code></pre></div>
 </div>
 <div id="define-regular-expressions-to-detect-calls-for-agenda-items" class="section level4">
 <h4>Define regular expressions to detect calls for agenda items</h4>
-<p>Detecting calls to agenda items is optional. The body of a document can also be created with <code>$makeBody(agendaItems = FALSE)</code>. For detecting agenda item calls, define the field  as a named character vector of (alternative) regular expressions that will match a call to an agenda item.</p>
-<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" data-line-number="1">PPP<span class="op">$</span>agendaItemRegex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
-<a class="sourceLine" id="cb13-2" data-line-number="2">PPP<span class="op">$</span>agendaItemTypes &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a></code></pre></div>
+<p>Detecting calls to agenda items is optional. The body of a document can also be created with <code>$makeBody(agendaItems = FALSE)</code>. For detecting agenda item calls, define the field <em>agendaItemRegex</em> as a named character vector of (alternative) regular expressions that will match a call to an agenda item.</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1">PPP<span class="op">$</span>agendaItemRegex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
+<a class="sourceLine" id="cb11-2" data-line-number="2">PPP<span class="op">$</span>agendaItemTypes &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a></code></pre></div>
 </div>
 <div id="define-regular-expressions-to-detect-stage-instructions" class="section level4">
 <h4>Define regular expressions to detect stage instructions</h4>
-<p>To markup stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the  attribute of the  element surrounding what has been matched will be the name of the regular expression.</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1">PPP<span class="op">$</span>stageRegex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb14-2" data-line-number="2">  <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb14-3" data-line-number="3">)</a></code></pre></div>
+<p>To mark-up stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the <em>type</em> attribute of the <em>stage</em> element surrounding what has been matched will be the name of the regular expression.</p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1">PPP<span class="op">$</span>stageRegex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb12-2" data-line-number="2">  <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb12-3" data-line-number="3">)</a></code></pre></div>
 </div>
 </div>
 </div>
 <div id="processing-a-protocol" class="section level2">
 <h2>Processing a Protocol</h2>
-<p>We are now ready to parse our first plenary protocol. Once the parser has been initialized, the user intervention that is required is minimal. The whole idea behind  is to automate parsing plenary protocols, thus making the procedure reproducible.</p>
-<p>The exception to this rule at this stage is that that the parser requires the metadata of the document to generate a telling header, but it does not (yet) have a method to extract the relevant information from the document. So we write a function <code>$getMetadata()</code> that does this, based on the original pdf document.</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">getMetadata &lt;-<span class="st"> </span><span class="cf">function</span>(filename){</a>
-<a class="sourceLine" id="cb15-2" data-line-number="2">  pdfdoc &lt;-<span class="st"> </span>pdftools<span class="op">::</span><span class="kw">pdf_text</span>(<span class="dt">pdf =</span> doc)</a>
-<a class="sourceLine" id="cb15-3" data-line-number="3">  page1 &lt;-<span class="st"> </span><span class="kw">strsplit</span>(pdfdoc, <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)[[<span class="dv">1</span>]]</a>
-<a class="sourceLine" id="cb15-4" data-line-number="4">  </a>
-<a class="sourceLine" id="cb15-5" data-line-number="5">  <span class="co"># get session</span></a>
-<a class="sourceLine" id="cb15-6" data-line-number="6">  docIdRegex &lt;-<span class="st"> &quot;^.*?</span><span class="ch">\\</span><span class="st">s*(A)</span><span class="ch">\\</span><span class="st">s*/(</span><span class="ch">\\</span><span class="st">d+)/</span><span class="ch">\\</span><span class="st">s*(PV</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d+).*?$&quot;</span></a>
-<a class="sourceLine" id="cb15-7" data-line-number="7">  session &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(<span class="dt">X =</span> page1, <span class="dt">pattern =</span> docIdRegex))[<span class="dv">1</span>,<span class="dv">2</span>]</a>
-<a class="sourceLine" id="cb15-8" data-line-number="8">  </a>
-<a class="sourceLine" id="cb15-9" data-line-number="9">  <span class="co"># get date</span></a>
-<a class="sourceLine" id="cb15-10" data-line-number="10">  weekdays =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Monday&quot;</span>, <span class="st">&quot;Tuesday&quot;</span>, <span class="st">&quot;Wednesday&quot;</span>, <span class="st">&quot;Thursday&quot;</span>, <span class="st">&quot;Friday&quot;</span>, <span class="st">&quot;Saturday&quot;</span>, <span class="st">&quot;Sunday&quot;</span>)</a>
-<a class="sourceLine" id="cb15-11" data-line-number="11">  months =<span class="st"> </span><span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb15-12" data-line-number="12">    <span class="dt">January =</span> <span class="dv">1</span>, <span class="dt">February =</span> <span class="dv">2</span>, <span class="dt">March =</span> <span class="dv">3</span>, <span class="dt">April =</span> <span class="dv">4</span>, <span class="dt">May =</span> <span class="dv">5</span>, <span class="dt">June =</span> <span class="dv">6</span>,</a>
-<a class="sourceLine" id="cb15-13" data-line-number="13">    <span class="dt">July =</span> <span class="dv">7</span>, <span class="dt">August =</span> <span class="dv">8</span>, <span class="dt">September =</span> <span class="dv">9</span>, <span class="dt">October =</span> <span class="dv">10</span>, <span class="dt">November =</span> <span class="dv">11</span>, <span class="dt">December =</span> <span class="dv">12</span></a>
-<a class="sourceLine" id="cb15-14" data-line-number="14">    )</a>
-<a class="sourceLine" id="cb15-15" data-line-number="15">  dateRegex &lt;-<span class="st"> </span><span class="kw">sprintf</span>(</a>
-<a class="sourceLine" id="cb15-16" data-line-number="16">    <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*(%s),</span><span class="ch">\\</span><span class="st">s*(</span><span class="ch">\\</span><span class="st">d{1,2})</span><span class="ch">\\</span><span class="st">s+(%s)</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d{4}),</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d{1,2}</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d{2}</span><span class="ch">\\</span><span class="st">s+(a</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.|p</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.)</span><span class="ch">\\</span><span class="st">s*$&quot;</span>,</a>
-<a class="sourceLine" id="cb15-17" data-line-number="17">    <span class="kw">paste0</span>(weekdays, <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>),</a>
-<a class="sourceLine" id="cb15-18" data-line-number="18">    <span class="kw">paste0</span>(<span class="kw">names</span>(months), <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>)</a>
-<a class="sourceLine" id="cb15-19" data-line-number="19">  )</a>
-<a class="sourceLine" id="cb15-20" data-line-number="20">  dateMatch &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapply</span>(page1, <span class="dt">pattern =</span> dateRegex, c))</a>
-<a class="sourceLine" id="cb15-21" data-line-number="21">  year &lt;-<span class="st"> </span>dateMatch[<span class="dv">1</span>,<span class="dv">4</span>]</a>
-<a class="sourceLine" id="cb15-22" data-line-number="22">  month &lt;-<span class="st"> </span><span class="kw">as.integer</span>(months[dateMatch[<span class="dv">1</span>,<span class="dv">3</span>]])</a>
-<a class="sourceLine" id="cb15-23" data-line-number="23">  day &lt;-<span class="st"> </span><span class="kw">as.integer</span>(dateMatch[<span class="dv">1</span>,<span class="dv">2</span>])</a>
-<a class="sourceLine" id="cb15-24" data-line-number="24">  dateOfMeeting &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%s-%02d-%02d&quot;</span>, year, month, day)</a>
-<a class="sourceLine" id="cb15-25" data-line-number="25">  </a>
-<a class="sourceLine" id="cb15-26" data-line-number="26">  <span class="co"># get meeting</span></a>
-<a class="sourceLine" id="cb15-27" data-line-number="27">  meetingRegex &lt;-<span class="st"> &quot;</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d+)(st|nd|rd|th)</span><span class="ch">\\</span><span class="st">s+plenary</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb15-28" data-line-number="28">  meeting &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> meetingRegex))[<span class="dv">1</span>,<span class="dv">1</span>]</a>
-<a class="sourceLine" id="cb15-29" data-line-number="29">  </a>
-<a class="sourceLine" id="cb15-30" data-line-number="30">  <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb15-31" data-line-number="31">    <span class="dt">legislativePeriod =</span> <span class="kw">as.integer</span>(session),</a>
-<a class="sourceLine" id="cb15-32" data-line-number="32">    <span class="dt">sessionNo =</span> <span class="kw">as.integer</span>(meeting),</a>
-<a class="sourceLine" id="cb15-33" data-line-number="33">    <span class="dt">date =</span> <span class="kw">as.Date</span>(dateOfMeeting),</a>
-<a class="sourceLine" id="cb15-34" data-line-number="34">    <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
-<a class="sourceLine" id="cb15-35" data-line-number="35">    <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
-<a class="sourceLine" id="cb15-36" data-line-number="36">    <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
-<a class="sourceLine" id="cb15-37" data-line-number="37">    <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
-<a class="sourceLine" id="cb15-38" data-line-number="38">    <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
-<a class="sourceLine" id="cb15-39" data-line-number="39">  )</a>
-<a class="sourceLine" id="cb15-40" data-line-number="40">}</a></code></pre></div>
+<p>We are now ready to parse our first plenary protocol. Once the parser has been initialized, the user intervention that is required is minimal. The whole idea behind <em>frappp</em> is to automate parsing plenary protocols, thus making the procedure reproducible.</p>
+<p>However, the parser requires the metadata of the document to generate a telling header. But its generic version does not have a method to extract the relevant information from the document. So we write a function that does this, based on the original pdf document.</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb13-1" data-line-number="1">getMetadata &lt;-<span class="st"> </span><span class="cf">function</span>(filename){</a>
+<a class="sourceLine" id="cb13-2" data-line-number="2">  pdfdoc &lt;-<span class="st"> </span>pdftools<span class="op">::</span><span class="kw">pdf_text</span>(<span class="dt">pdf =</span> doc)</a>
+<a class="sourceLine" id="cb13-3" data-line-number="3">  page1 &lt;-<span class="st"> </span><span class="kw">strsplit</span>(pdfdoc, <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)[[<span class="dv">1</span>]]</a>
+<a class="sourceLine" id="cb13-4" data-line-number="4">  </a>
+<a class="sourceLine" id="cb13-5" data-line-number="5">  <span class="co"># get session</span></a>
+<a class="sourceLine" id="cb13-6" data-line-number="6">  docIdRegex &lt;-<span class="st"> &quot;^.*?</span><span class="ch">\\</span><span class="st">s*(A)</span><span class="ch">\\</span><span class="st">s*/(</span><span class="ch">\\</span><span class="st">d+)/</span><span class="ch">\\</span><span class="st">s*(PV</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d+).*?$&quot;</span></a>
+<a class="sourceLine" id="cb13-7" data-line-number="7">  session &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(<span class="dt">X =</span> page1, <span class="dt">pattern =</span> docIdRegex))[<span class="dv">1</span>,<span class="dv">2</span>]</a>
+<a class="sourceLine" id="cb13-8" data-line-number="8">  </a>
+<a class="sourceLine" id="cb13-9" data-line-number="9">  <span class="co"># get date</span></a>
+<a class="sourceLine" id="cb13-10" data-line-number="10">  weekdays =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Monday&quot;</span>, <span class="st">&quot;Tuesday&quot;</span>, <span class="st">&quot;Wednesday&quot;</span>, <span class="st">&quot;Thursday&quot;</span>, <span class="st">&quot;Friday&quot;</span>, <span class="st">&quot;Saturday&quot;</span>, <span class="st">&quot;Sunday&quot;</span>)</a>
+<a class="sourceLine" id="cb13-11" data-line-number="11">  months =<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb13-12" data-line-number="12">    <span class="dt">January =</span> <span class="dv">1</span>, <span class="dt">February =</span> <span class="dv">2</span>, <span class="dt">March =</span> <span class="dv">3</span>, <span class="dt">April =</span> <span class="dv">4</span>, <span class="dt">May =</span> <span class="dv">5</span>, <span class="dt">June =</span> <span class="dv">6</span>,</a>
+<a class="sourceLine" id="cb13-13" data-line-number="13">    <span class="dt">July =</span> <span class="dv">7</span>, <span class="dt">August =</span> <span class="dv">8</span>, <span class="dt">September =</span> <span class="dv">9</span>, <span class="dt">October =</span> <span class="dv">10</span>, <span class="dt">November =</span> <span class="dv">11</span>, <span class="dt">December =</span> <span class="dv">12</span></a>
+<a class="sourceLine" id="cb13-14" data-line-number="14">    )</a>
+<a class="sourceLine" id="cb13-15" data-line-number="15">  dateRegex &lt;-<span class="st"> </span><span class="kw">sprintf</span>(</a>
+<a class="sourceLine" id="cb13-16" data-line-number="16">    <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*(%s),</span><span class="ch">\\</span><span class="st">s*(</span><span class="ch">\\</span><span class="st">d{1,2})</span><span class="ch">\\</span><span class="st">s+(%s)</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d{4}),</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d{1,2}</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d{2}</span><span class="ch">\\</span><span class="st">s+(a</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.|p</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.)</span><span class="ch">\\</span><span class="st">s*$&quot;</span>,</a>
+<a class="sourceLine" id="cb13-17" data-line-number="17">    <span class="kw">paste0</span>(weekdays, <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>),</a>
+<a class="sourceLine" id="cb13-18" data-line-number="18">    <span class="kw">paste0</span>(<span class="kw">names</span>(months), <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>)</a>
+<a class="sourceLine" id="cb13-19" data-line-number="19">  )</a>
+<a class="sourceLine" id="cb13-20" data-line-number="20">  dateMatch &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapply</span>(page1, <span class="dt">pattern =</span> dateRegex, c))</a>
+<a class="sourceLine" id="cb13-21" data-line-number="21">  year &lt;-<span class="st"> </span>dateMatch[<span class="dv">1</span>,<span class="dv">4</span>]</a>
+<a class="sourceLine" id="cb13-22" data-line-number="22">  month &lt;-<span class="st"> </span><span class="kw">as.integer</span>(months[dateMatch[<span class="dv">1</span>,<span class="dv">3</span>]])</a>
+<a class="sourceLine" id="cb13-23" data-line-number="23">  day &lt;-<span class="st"> </span><span class="kw">as.integer</span>(dateMatch[<span class="dv">1</span>,<span class="dv">2</span>])</a>
+<a class="sourceLine" id="cb13-24" data-line-number="24">  dateOfMeeting &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%s-%02d-%02d&quot;</span>, year, month, day)</a>
+<a class="sourceLine" id="cb13-25" data-line-number="25">  </a>
+<a class="sourceLine" id="cb13-26" data-line-number="26">  <span class="co"># get meeting</span></a>
+<a class="sourceLine" id="cb13-27" data-line-number="27">  meetingRegex &lt;-<span class="st"> &quot;</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d+)(st|nd|rd|th)</span><span class="ch">\\</span><span class="st">s+plenary</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb13-28" data-line-number="28">  meeting &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> meetingRegex))[<span class="dv">1</span>,<span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb13-29" data-line-number="29">  </a>
+<a class="sourceLine" id="cb13-30" data-line-number="30">  <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb13-31" data-line-number="31">    <span class="dt">legislativePeriod =</span> <span class="kw">as.integer</span>(session),</a>
+<a class="sourceLine" id="cb13-32" data-line-number="32">    <span class="dt">sessionNo =</span> <span class="kw">as.integer</span>(meeting),</a>
+<a class="sourceLine" id="cb13-33" data-line-number="33">    <span class="dt">date =</span> <span class="kw">as.Date</span>(dateOfMeeting),</a>
+<a class="sourceLine" id="cb13-34" data-line-number="34">    <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
+<a class="sourceLine" id="cb13-35" data-line-number="35">    <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
+<a class="sourceLine" id="cb13-36" data-line-number="36">    <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
+<a class="sourceLine" id="cb13-37" data-line-number="37">    <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
+<a class="sourceLine" id="cb13-38" data-line-number="38">    <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
+<a class="sourceLine" id="cb13-39" data-line-number="39">  )</a>
+<a class="sourceLine" id="cb13-40" data-line-number="40">}</a></code></pre></div>
 <p>Note that the original pdf document is the basis for getting the metadata: The metadata is found in regions that we wanted to get rid to have the clean text body.</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">metadata &lt;-<span class="st"> </span><span class="kw">getMetadata</span>(doc)</a></code></pre></div>
+<div class="sourceCode" id="cb14"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb14-1" data-line-number="1">metadata &lt;-<span class="st"> </span><span class="kw">getMetadata</span>(doc)</a></code></pre></div>
 <p>Let’s go. The first step is to read a file. We use the plain text file we used before.</p>
-<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> undoc_tmp, <span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>)</a></code></pre></div>
-<p>Second. The initialized document includes some default metadata values: The birthdy the document was parsed , the package used (“frappp”) and the version of the package (see <code>PPP$metadata</code>). We add the metadata extracted before to these default metadata values.</p>
-<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">addMetadata</span>(<span class="dt">data =</span> metadata)</a></code></pre></div>
-<p>Third. We now generte the base TEI document by inserting the metadata into the TEI header. To do this, the parser uses the names of the character vector in the metadata to find matching XPath expressions in a character vector in the field xpath of the parser (<code>PPP$xpath</code>), using names. The respective XPath expression is used to find the correct place in the XML document for the piece of information of the metadata.</p>
+<div class="sourceCode" id="cb15"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb15-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> undoc_tmp, <span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>)</a></code></pre></div>
+<p>Second. The initialized document includes some default metadata values: The birthday the document was parsed, the package used (“frappp”) and the version of the package (see <code>PPP$metadata</code>). We add the metadata extracted before to these default metadata values.</p>
+<div class="sourceCode" id="cb16"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb16-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">addMetadata</span>(<span class="dt">data =</span> metadata)</a></code></pre></div>
+<p>Third. We now generate the base TEI document by inserting the metadata into the TEI header. To do this, the parser uses the names of the character vector in the metadata to find matching XPath expressions in a character vector in the field xpath of the parser (<code>PPP$xpath</code>), using names. The respective XPath expression is used to find the correct place in the XML document for the piece of information of the metadata.</p>
 <p>After running <code>$makeHeader()</code>, the field xml will contain the TEI document with the populated header (see <code>PPP$xml</code>, or <code>cat(as.character(PPP$xml))</code>).</p>
-<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">makeHeader</span>()</a></code></pre></div>
-<p>Third. The raw text (in the field <code>PPP$txt</code>) may include some noise. A preprocessing method (<code>$preprocessin()</code>)will remove empty lines, and leading and trailing whitespace. It takes as input a list <code>replacements</code>, a list of length 2 character vectors that serve as input to <code>gsub</code> (parameters pattern and x, respectively), to perform usual cleanups.</p>
-<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">preprocessing</span>() <span class="co"># remove leading and and trailing spaces</span></a></code></pre></div>
-<p>Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field <code>PPP$speakerRegex</code> to split up the (preprocessed) plain text into chunks of speech that will be kept (as a list) in the field <code>$chunks</code>.</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">splitBySpeakers</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb17"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb17-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">makeHeader</span>()</a></code></pre></div>
+<p>Third. The raw text (in the field <code>PPP$txt</code>) may include some noise. A pre-processing method (<code>$preprocessing()</code>) will remove empty lines, and leading and trailing whitespace. It takes as input a list <code>replacements</code>, a list of length 2 character vectors that serve as input to <code>gsub</code> (parameters pattern and x, respectively), to perform usual clean-ups.</p>
+<div class="sourceCode" id="cb18"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb18-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">preprocessing</span>() <span class="co"># remove leading and trailing spaces</span></a></code></pre></div>
+<p>Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field <code>PPP$speakerRegex</code> to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field <code>$chunks</code>.</p>
+<div class="sourceCode" id="cb19"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb19-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">splitBySpeakers</span>()</a></code></pre></div>
 <p>If you look at any of these chunks (e.g. <code>PPP$chunks[[2]]</code>), you will see that the text has been extracted nicely from the pdf document, but that paragraphs have been destroyed.</p>
 <p>Fifth: We reconstruct the paragraphs!</p>
-<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a></code></pre></div>
 <p>See <code>PPP$chunks[[2]]</code> to see the result of this procedure. When reconstructing paragraphs, the heuristic is that lines are concatenated, when their length undercuts a standard length. To guess the number of characters per line that might be optimal, the method <code>$showNcharHistogram()</code> can be used.</p>
 <p>Sixth. All preparatory steps have been performed. We now insert the speakers and the text of their speeches into the body of the XML document already present in the <code>$xml</code> field.</p>
-<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">TRUE</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">FALSE</span>)</a></code></pre></div>
 <p>That’s it! The XML document is in the <code>$xml</code> field of our class. You can either look at it by typing <code>cat(as.character(PPP$xml))</code>, if by using the convenience of a browser that is called with the <code>$browseXML()</code> method.</p>
-<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb24-1" data-line-number="1"><span class="cf">if</span> (<span class="kw">interactive</span>()) PPP<span class="op">$</span><span class="kw">browseXML</span>()</a></code></pre></div>
+<div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" data-line-number="1"><span class="cf">if</span> (<span class="kw">interactive</span>()) PPP<span class="op">$</span><span class="kw">browseXML</span>()</a></code></pre></div>
 <p>To write the XML document to a file, you can use the following snippet.</p>
-<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb25-1" data-line-number="1">outfile &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
-<a class="sourceLine" id="cb25-2" data-line-number="2"><span class="kw">writeLines</span>(<span class="dt">text =</span> <span class="kw">as.character</span>(PPP<span class="op">$</span>xml), <span class="dt">con =</span> outfile)</a></code></pre></div>
+<div class="sourceCode" id="cb23"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb23-1" data-line-number="1">outfile &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
+<a class="sourceLine" id="cb23-2" data-line-number="2"><span class="kw">writeLines</span>(<span class="dt">text =</span> <span class="kw">as.character</span>(PPP<span class="op">$</span>xml), <span class="dt">con =</span> outfile)</a></code></pre></div>
 <p>This has been the verbose version of parsing a protocol. In real life, you certainly want things to be more efficient. So note that the implementation of the PlenaryProtocolParser meets the requirements to use a technique called method chaining, which is very similar to the pipes more commonly known in R.</p>
-<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb26-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> undoc_tmp, <span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>)<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-2" data-line-number="2"><span class="st">  </span><span class="kw">addMetadata</span>(<span class="dt">data =</span> <span class="kw">getMetadata</span>(doc))<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-3" data-line-number="3"><span class="st">  </span><span class="kw">makeHeader</span>()<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-4" data-line-number="4"><span class="st">  </span><span class="kw">preprocessing</span>()<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-5" data-line-number="5"><span class="st">  </span><span class="kw">splitBySpeakers</span>()<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-6" data-line-number="6"><span class="st">  </span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-7" data-line-number="7"><span class="st">  </span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">TRUE</span>)<span class="op">$</span></a>
-<a class="sourceLine" id="cb26-8" data-line-number="8"><span class="st">  </span><span class="kw">saveXML</span>(<span class="dt">filename =</span> <span class="kw">tempfile</span>())</a></code></pre></div>
+<div class="sourceCode" id="cb24"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb24-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> undoc_tmp, <span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>)<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-2" data-line-number="2"><span class="st">  </span><span class="kw">addMetadata</span>(<span class="dt">data =</span> <span class="kw">getMetadata</span>(doc))<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-3" data-line-number="3"><span class="st">  </span><span class="kw">makeHeader</span>()<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-4" data-line-number="4"><span class="st">  </span><span class="kw">preprocessing</span>()<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-5" data-line-number="5"><span class="st">  </span><span class="kw">splitBySpeakers</span>()<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-6" data-line-number="6"><span class="st">  </span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-7" data-line-number="7"><span class="st">  </span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">FALSE</span>)<span class="op">$</span></a>
+<a class="sourceLine" id="cb24-8" data-line-number="8"><span class="st">  </span><span class="kw">saveXML</span>(<span class="dt">filename =</span> <span class="kw">tempfile</span>())</a></code></pre></div>
 </div>
 <div id="defining-classes-inheriting-from-plenaryprotocolclass" class="section level2">
 <h2>Defining classes inheriting from PlenaryProtocolClass</h2>
-<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb27-1" data-line-number="1"><span class="kw">library</span>(R6)</a></code></pre></div>
-<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb28-1" data-line-number="1">VerbatimRecordUNGA &lt;-<span class="st"> </span><span class="kw">R6Class</span>(</a>
-<a class="sourceLine" id="cb28-2" data-line-number="2">  </a>
-<a class="sourceLine" id="cb28-3" data-line-number="3">  <span class="st">&quot;VerbatimRecordUNGA&quot;</span>,</a>
-<a class="sourceLine" id="cb28-4" data-line-number="4">  <span class="dt">inherit =</span> PlenaryProtocolParser,</a>
-<a class="sourceLine" id="cb28-5" data-line-number="5">  </a>
-<a class="sourceLine" id="cb28-6" data-line-number="6">  <span class="dt">public =</span> <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb28-7" data-line-number="7">    </a>
-<a class="sourceLine" id="cb28-8" data-line-number="8">    <span class="dt">pdffile =</span> <span class="ot">NULL</span>,</a>
-<a class="sourceLine" id="cb28-9" data-line-number="9">    </a>
-<a class="sourceLine" id="cb28-10" data-line-number="10">    <span class="dt">initialize =</span> <span class="cf">function</span>(){</a>
-<a class="sourceLine" id="cb28-11" data-line-number="11">      </a>
-<a class="sourceLine" id="cb28-12" data-line-number="12">      self<span class="op">$</span>xpath =<span class="st"> </span>teiXpath</a>
-<a class="sourceLine" id="cb28-13" data-line-number="13">      </a>
-<a class="sourceLine" id="cb28-14" data-line-number="14">      self<span class="op">$</span>speakerRegex &lt;-<span class="st"> </span><span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb28-15" data-line-number="15">        <span class="dt">pres =</span> <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb28-16" data-line-number="16">          <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">s+President):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
-<a class="sourceLine" id="cb28-17" data-line-number="17">          <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
-<a class="sourceLine" id="cb28-18" data-line-number="18">            <span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb28-19" data-line-number="19">              <span class="dt">who =</span> who,</a>
-<a class="sourceLine" id="cb28-20" data-line-number="20">              <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
-<a class="sourceLine" id="cb28-21" data-line-number="21">              <span class="dt">role =</span> <span class="st">&quot;presidency&quot;</span>,</a>
-<a class="sourceLine" id="cb28-22" data-line-number="22">              <span class="dt">position =</span> <span class="st">&quot;presidency&quot;</span>,</a>
-<a class="sourceLine" id="cb28-23" data-line-number="23">              <span class="dt">text =</span> txt</a>
-<a class="sourceLine" id="cb28-24" data-line-number="24">            )</a>
-<a class="sourceLine" id="cb28-25" data-line-number="25">          }</a>
-<a class="sourceLine" id="cb28-26" data-line-number="26">        ),</a>
-<a class="sourceLine" id="cb28-27" data-line-number="27">        <span class="dt">sg =</span> <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb28-28" data-line-number="28">          <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">sSecretary-General):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
-<a class="sourceLine" id="cb28-29" data-line-number="29">          <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
-<a class="sourceLine" id="cb28-30" data-line-number="30">            <span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb28-31" data-line-number="31">              <span class="dt">who =</span> who,</a>
-<a class="sourceLine" id="cb28-32" data-line-number="32">              <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
-<a class="sourceLine" id="cb28-33" data-line-number="33">              <span class="dt">role =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
-<a class="sourceLine" id="cb28-34" data-line-number="34">              <span class="dt">position =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
-<a class="sourceLine" id="cb28-35" data-line-number="35">              <span class="dt">text =</span> txt</a>
-<a class="sourceLine" id="cb28-36" data-line-number="36">            )</a>
-<a class="sourceLine" id="cb28-37" data-line-number="37">          }</a>
-<a class="sourceLine" id="cb28-38" data-line-number="38">        )</a>
-<a class="sourceLine" id="cb28-39" data-line-number="39">      )</a>
-<a class="sourceLine" id="cb28-40" data-line-number="40">      self<span class="op">$</span>speakerMismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a>
-<a class="sourceLine" id="cb28-41" data-line-number="41">      self<span class="op">$</span>agendaItemRegex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
-<a class="sourceLine" id="cb28-42" data-line-number="42">      self<span class="op">$</span>agendaItemTypes &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a>
-<a class="sourceLine" id="cb28-43" data-line-number="43">      self<span class="op">$</span>stageRegex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb28-44" data-line-number="44">        <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb28-45" data-line-number="45">      )</a>
-<a class="sourceLine" id="cb28-46" data-line-number="46">      </a>
-<a class="sourceLine" id="cb28-47" data-line-number="47">      <span class="kw">invisible</span>(self)</a>
-<a class="sourceLine" id="cb28-48" data-line-number="48">    },</a>
-<a class="sourceLine" id="cb28-49" data-line-number="49">    </a>
-<a class="sourceLine" id="cb28-50" data-line-number="50">    </a>
-<a class="sourceLine" id="cb28-51" data-line-number="51">    <span class="dt">getMetadata =</span> <span class="cf">function</span>(filename){</a>
-<a class="sourceLine" id="cb28-52" data-line-number="52">      pdfdoc &lt;-<span class="st"> </span>pdftools<span class="op">::</span><span class="kw">pdf_text</span>(<span class="dt">pdf =</span> doc)</a>
-<a class="sourceLine" id="cb28-53" data-line-number="53">      page1 &lt;-<span class="st"> </span><span class="kw">strsplit</span>(pdfdoc, <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)[[<span class="dv">1</span>]]</a>
-<a class="sourceLine" id="cb28-54" data-line-number="54">      </a>
-<a class="sourceLine" id="cb28-55" data-line-number="55">      <span class="co"># get session</span></a>
-<a class="sourceLine" id="cb28-56" data-line-number="56">      docIdRegex &lt;-<span class="st"> &quot;^.*?</span><span class="ch">\\</span><span class="st">s*(A)</span><span class="ch">\\</span><span class="st">s*/(</span><span class="ch">\\</span><span class="st">d+)/</span><span class="ch">\\</span><span class="st">s*(PV</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d+).*?$&quot;</span></a>
-<a class="sourceLine" id="cb28-57" data-line-number="57">      session &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(<span class="dt">X =</span> page1, <span class="dt">pattern =</span> docIdRegex))[<span class="dv">1</span>,<span class="dv">2</span>]</a>
-<a class="sourceLine" id="cb28-58" data-line-number="58">      </a>
-<a class="sourceLine" id="cb28-59" data-line-number="59">      <span class="co"># get date</span></a>
-<a class="sourceLine" id="cb28-60" data-line-number="60">      weekdays =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Monday&quot;</span>, <span class="st">&quot;Tuesday&quot;</span>, <span class="st">&quot;Wednesday&quot;</span>, <span class="st">&quot;Thursday&quot;</span>, <span class="st">&quot;Friday&quot;</span>, <span class="st">&quot;Saturday&quot;</span>, <span class="st">&quot;Sunday&quot;</span>)</a>
-<a class="sourceLine" id="cb28-61" data-line-number="61">      months =<span class="st"> </span><span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb28-62" data-line-number="62">        <span class="dt">January =</span> <span class="dv">1</span>, <span class="dt">February =</span> <span class="dv">2</span>, <span class="dt">March =</span> <span class="dv">3</span>, <span class="dt">April =</span> <span class="dv">4</span>, <span class="dt">May =</span> <span class="dv">5</span>, <span class="dt">June =</span> <span class="dv">6</span>,</a>
-<a class="sourceLine" id="cb28-63" data-line-number="63">        <span class="dt">July =</span> <span class="dv">7</span>, <span class="dt">August =</span> <span class="dv">8</span>, <span class="dt">September =</span> <span class="dv">9</span>, <span class="dt">October =</span> <span class="dv">10</span>, <span class="dt">November =</span> <span class="dv">11</span>, <span class="dt">December =</span> <span class="dv">12</span></a>
-<a class="sourceLine" id="cb28-64" data-line-number="64">      )</a>
-<a class="sourceLine" id="cb28-65" data-line-number="65">      dateRegex &lt;-<span class="st"> </span><span class="kw">sprintf</span>(</a>
-<a class="sourceLine" id="cb28-66" data-line-number="66">        <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*(%s),</span><span class="ch">\\</span><span class="st">s*(</span><span class="ch">\\</span><span class="st">d{1,2})</span><span class="ch">\\</span><span class="st">s+(%s)</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d{4}),</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d{1,2}</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d{2}</span><span class="ch">\\</span><span class="st">s+(a</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.|p</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.)</span><span class="ch">\\</span><span class="st">s*$&quot;</span>,</a>
-<a class="sourceLine" id="cb28-67" data-line-number="67">        <span class="kw">paste0</span>(weekdays, <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>),</a>
-<a class="sourceLine" id="cb28-68" data-line-number="68">        <span class="kw">paste0</span>(<span class="kw">names</span>(months), <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>)</a>
-<a class="sourceLine" id="cb28-69" data-line-number="69">      )</a>
-<a class="sourceLine" id="cb28-70" data-line-number="70">      dateMatch &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> dateRegex))</a>
-<a class="sourceLine" id="cb28-71" data-line-number="71">      year &lt;-<span class="st"> </span>dateMatch[<span class="dv">1</span>,<span class="dv">4</span>]</a>
-<a class="sourceLine" id="cb28-72" data-line-number="72">      month &lt;-<span class="st"> </span><span class="kw">as.integer</span>(months[dateMatch[<span class="dv">1</span>,<span class="dv">3</span>]])</a>
-<a class="sourceLine" id="cb28-73" data-line-number="73">      day &lt;-<span class="st"> </span><span class="kw">as.integer</span>(dateMatch[<span class="dv">1</span>,<span class="dv">2</span>])</a>
-<a class="sourceLine" id="cb28-74" data-line-number="74">      dateOfMeeting &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%s-%02d-%02d&quot;</span>, year, month, day)</a>
-<a class="sourceLine" id="cb28-75" data-line-number="75">      </a>
-<a class="sourceLine" id="cb28-76" data-line-number="76">      <span class="co"># get meeting</span></a>
-<a class="sourceLine" id="cb28-77" data-line-number="77">      meetingRegex &lt;-<span class="st"> &quot;</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d+)(st|nd|rd|th)</span><span class="ch">\\</span><span class="st">s+plenary</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb28-78" data-line-number="78">      meeting &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> meetingRegex))[<span class="dv">1</span>,<span class="dv">1</span>]</a>
-<a class="sourceLine" id="cb28-79" data-line-number="79">      </a>
-<a class="sourceLine" id="cb28-80" data-line-number="80">      <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb28-81" data-line-number="81">        <span class="dt">legislativePeriod =</span> <span class="kw">as.integer</span>(session),</a>
-<a class="sourceLine" id="cb28-82" data-line-number="82">        <span class="dt">sessionNo =</span> <span class="kw">as.integer</span>(meeting),</a>
-<a class="sourceLine" id="cb28-83" data-line-number="83">        <span class="dt">date =</span> <span class="kw">as.Date</span>(dateOfMeeting),</a>
-<a class="sourceLine" id="cb28-84" data-line-number="84">        <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
-<a class="sourceLine" id="cb28-85" data-line-number="85">        <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
-<a class="sourceLine" id="cb28-86" data-line-number="86">        <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
-<a class="sourceLine" id="cb28-87" data-line-number="87">        <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
-<a class="sourceLine" id="cb28-88" data-line-number="88">        <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
-<a class="sourceLine" id="cb28-89" data-line-number="89">      )</a>
-<a class="sourceLine" id="cb28-90" data-line-number="90">    },</a>
-<a class="sourceLine" id="cb28-91" data-line-number="91"></a>
-<a class="sourceLine" id="cb28-92" data-line-number="92">    <span class="dt">xmlify =</span> <span class="cf">function</span>(id, txtfile, pdffile, xmlfile, <span class="dt">verbose =</span> <span class="ot">TRUE</span>){</a>
-<a class="sourceLine" id="cb28-93" data-line-number="93">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... getting metadata&quot;</span>)</a>
-<a class="sourceLine" id="cb28-94" data-line-number="94">      metadata &lt;-<span class="st"> </span>self<span class="op">$</span><span class="kw">getMetadata</span>(pdffile)</a>
-<a class="sourceLine" id="cb28-95" data-line-number="95">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reading plain text file: &quot;</span>, txtfile)</a>
-<a class="sourceLine" id="cb28-96" data-line-number="96">      self<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> txtfile, <span class="dt">id =</span> id)</a>
-<a class="sourceLine" id="cb28-97" data-line-number="97">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... adding metadata that has beeen extracted&quot;</span>)</a>
-<a class="sourceLine" id="cb28-98" data-line-number="98">      self<span class="op">$</span><span class="kw">addMetadata</span>(<span class="dt">data =</span> metadata)</a>
-<a class="sourceLine" id="cb28-99" data-line-number="99">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making header&quot;</span>)</a>
-<a class="sourceLine" id="cb28-100" data-line-number="100">      self<span class="op">$</span><span class="kw">makeHeader</span>()</a>
-<a class="sourceLine" id="cb28-101" data-line-number="101">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... preprocessing plain text&quot;</span>)</a>
-<a class="sourceLine" id="cb28-102" data-line-number="102">      self<span class="op">$</span><span class="kw">preprocessing</span>()</a>
-<a class="sourceLine" id="cb28-103" data-line-number="103">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... splitting up by speakers&quot;</span>)</a>
-<a class="sourceLine" id="cb28-104" data-line-number="104">      self<span class="op">$</span><span class="kw">splitBySpeakers</span>()</a>
-<a class="sourceLine" id="cb28-105" data-line-number="105">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reconstructing paragraphs&quot;</span>)</a>
-<a class="sourceLine" id="cb28-106" data-line-number="106">      self<span class="op">$</span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a>
-<a class="sourceLine" id="cb28-107" data-line-number="107">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making body&quot;</span>)</a>
-<a class="sourceLine" id="cb28-108" data-line-number="108">      self<span class="op">$</span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb28-109" data-line-number="109">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... saving TEI document to file: &quot;</span>, teifile)</a>
-<a class="sourceLine" id="cb28-110" data-line-number="110">      self<span class="op">$</span><span class="kw">saveXML</span>(<span class="dt">filename =</span> xmlfile)</a>
-<a class="sourceLine" id="cb28-111" data-line-number="111">      <span class="kw">invisible</span>(self<span class="op">$</span>xml)</a>
-<a class="sourceLine" id="cb28-112" data-line-number="112">    }</a>
-<a class="sourceLine" id="cb28-113" data-line-number="113">  )</a>
-<a class="sourceLine" id="cb28-114" data-line-number="114">)</a></code></pre></div>
+<p>It will depend on your corpus preparation scenario whether it makes sense to configure the PlenaryProtocolParser as it is, or whether it is better to define a class inheriting from it. We want to illustrate how a specified class to process the verbatim records of the UN General Assembly might look like. To be able to define a class inheriting from PlenaryProtocolClass, we need to load the R6 package.</p>
+<div class="sourceCode" id="cb25"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb25-1" data-line-number="1"><span class="kw">library</span>(R6)</a></code></pre></div>
+<p>The VerbatimRecordUNGA class we now define does not contain any code that you have not yet seen before.</p>
+<ol style="list-style-type: lower-alpha">
+<li><p>It includes an <code>$initialize()</code> method that will supersede the respective method of the parent class. The idea is that upon initialization, the regular expressions we know to work (or assume to work) are assigned to the respective fields.</p></li>
+<li><p>The <code>$getMetadata()</code> function we developed previously is now a method of the new class.</p></li>
+<li><p>The class includes a <code>$xmlify()</code> method that takes the files needed as input (filenames of pdf, txt, xml files), and that will perform the succession of steps to prepare the XML document.</p></li>
+</ol>
 <p>It goes beyond this vignette to explain the details of OOP. Hadley Wickham’s (online) book provides a good introduction to the R6 class system.</p>
+<div class="sourceCode" id="cb26"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb26-1" data-line-number="1">VerbatimRecordUNGA &lt;-<span class="st"> </span><span class="kw">R6Class</span>(</a>
+<a class="sourceLine" id="cb26-2" data-line-number="2">  </a>
+<a class="sourceLine" id="cb26-3" data-line-number="3">  <span class="st">&quot;VerbatimRecordUNGA&quot;</span>,</a>
+<a class="sourceLine" id="cb26-4" data-line-number="4">  <span class="dt">inherit =</span> PlenaryProtocolParser,</a>
+<a class="sourceLine" id="cb26-5" data-line-number="5">  </a>
+<a class="sourceLine" id="cb26-6" data-line-number="6">  <span class="dt">public =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb26-7" data-line-number="7">    </a>
+<a class="sourceLine" id="cb26-8" data-line-number="8">    <span class="dt">initialize =</span> <span class="cf">function</span>(){</a>
+<a class="sourceLine" id="cb26-9" data-line-number="9">      </a>
+<a class="sourceLine" id="cb26-10" data-line-number="10">      self<span class="op">$</span>xpath =<span class="st"> </span>teiXpath</a>
+<a class="sourceLine" id="cb26-11" data-line-number="11">      </a>
+<a class="sourceLine" id="cb26-12" data-line-number="12">      self<span class="op">$</span>speakerRegex &lt;-<span class="st"> </span><span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb26-13" data-line-number="13">        <span class="dt">pres =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb26-14" data-line-number="14">          <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">s+President):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
+<a class="sourceLine" id="cb26-15" data-line-number="15">          <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
+<a class="sourceLine" id="cb26-16" data-line-number="16">            <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb26-17" data-line-number="17">              <span class="dt">who =</span> who,</a>
+<a class="sourceLine" id="cb26-18" data-line-number="18">              <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
+<a class="sourceLine" id="cb26-19" data-line-number="19">              <span class="dt">role =</span> <span class="st">&quot;presidency&quot;</span>,</a>
+<a class="sourceLine" id="cb26-20" data-line-number="20">              <span class="dt">position =</span> <span class="st">&quot;presidency&quot;</span>,</a>
+<a class="sourceLine" id="cb26-21" data-line-number="21">              <span class="dt">text =</span> txt</a>
+<a class="sourceLine" id="cb26-22" data-line-number="22">            )</a>
+<a class="sourceLine" id="cb26-23" data-line-number="23">          }</a>
+<a class="sourceLine" id="cb26-24" data-line-number="24">        ),</a>
+<a class="sourceLine" id="cb26-25" data-line-number="25">        <span class="dt">sg =</span> <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb26-26" data-line-number="26">          <span class="dt">regex =</span> <span class="st">&quot;^(The</span><span class="ch">\\</span><span class="st">sSecretary-General):</span><span class="ch">\\</span><span class="st">s*(.+)$&quot;</span>,</a>
+<a class="sourceLine" id="cb26-27" data-line-number="27">          <span class="dt">fn =</span> <span class="cf">function</span>(who, txt){</a>
+<a class="sourceLine" id="cb26-28" data-line-number="28">            <span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb26-29" data-line-number="29">              <span class="dt">who =</span> who,</a>
+<a class="sourceLine" id="cb26-30" data-line-number="30">              <span class="dt">state =</span> <span class="st">&quot;NA&quot;</span>,</a>
+<a class="sourceLine" id="cb26-31" data-line-number="31">              <span class="dt">role =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
+<a class="sourceLine" id="cb26-32" data-line-number="32">              <span class="dt">position =</span> <span class="st">&quot;secretary-general&quot;</span>,</a>
+<a class="sourceLine" id="cb26-33" data-line-number="33">              <span class="dt">text =</span> txt</a>
+<a class="sourceLine" id="cb26-34" data-line-number="34">            )</a>
+<a class="sourceLine" id="cb26-35" data-line-number="35">          }</a>
+<a class="sourceLine" id="cb26-36" data-line-number="36">        )</a>
+<a class="sourceLine" id="cb26-37" data-line-number="37">      )</a>
+<a class="sourceLine" id="cb26-38" data-line-number="38">      self<span class="op">$</span>speakerMismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a>
+<a class="sourceLine" id="cb26-39" data-line-number="39">      self<span class="op">$</span>agendaItemRegex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
+<a class="sourceLine" id="cb26-40" data-line-number="40">      self<span class="op">$</span>agendaItemTypes &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a>
+<a class="sourceLine" id="cb26-41" data-line-number="41">      self<span class="op">$</span>stageRegex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb26-42" data-line-number="42">        <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb26-43" data-line-number="43">      )</a>
+<a class="sourceLine" id="cb26-44" data-line-number="44">      </a>
+<a class="sourceLine" id="cb26-45" data-line-number="45">      <span class="kw">invisible</span>(self)</a>
+<a class="sourceLine" id="cb26-46" data-line-number="46">    },</a>
+<a class="sourceLine" id="cb26-47" data-line-number="47">    </a>
+<a class="sourceLine" id="cb26-48" data-line-number="48">    </a>
+<a class="sourceLine" id="cb26-49" data-line-number="49">    <span class="dt">getMetadata =</span> <span class="cf">function</span>(filename){</a>
+<a class="sourceLine" id="cb26-50" data-line-number="50">      pdfdoc &lt;-<span class="st"> </span>pdftools<span class="op">::</span><span class="kw">pdf_text</span>(<span class="dt">pdf =</span> doc)</a>
+<a class="sourceLine" id="cb26-51" data-line-number="51">      page1 &lt;-<span class="st"> </span><span class="kw">strsplit</span>(pdfdoc, <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)[[<span class="dv">1</span>]]</a>
+<a class="sourceLine" id="cb26-52" data-line-number="52">      </a>
+<a class="sourceLine" id="cb26-53" data-line-number="53">      <span class="co"># get session</span></a>
+<a class="sourceLine" id="cb26-54" data-line-number="54">      docIdRegex &lt;-<span class="st"> &quot;^.*?</span><span class="ch">\\</span><span class="st">s*(A)</span><span class="ch">\\</span><span class="st">s*/(</span><span class="ch">\\</span><span class="st">d+)/</span><span class="ch">\\</span><span class="st">s*(PV</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d+).*?$&quot;</span></a>
+<a class="sourceLine" id="cb26-55" data-line-number="55">      session &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(<span class="dt">X =</span> page1, <span class="dt">pattern =</span> docIdRegex))[<span class="dv">1</span>,<span class="dv">2</span>]</a>
+<a class="sourceLine" id="cb26-56" data-line-number="56">      </a>
+<a class="sourceLine" id="cb26-57" data-line-number="57">      <span class="co"># get date</span></a>
+<a class="sourceLine" id="cb26-58" data-line-number="58">      weekdays =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Monday&quot;</span>, <span class="st">&quot;Tuesday&quot;</span>, <span class="st">&quot;Wednesday&quot;</span>, <span class="st">&quot;Thursday&quot;</span>, <span class="st">&quot;Friday&quot;</span>, <span class="st">&quot;Saturday&quot;</span>, <span class="st">&quot;Sunday&quot;</span>)</a>
+<a class="sourceLine" id="cb26-59" data-line-number="59">      months =<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb26-60" data-line-number="60">        <span class="dt">January =</span> <span class="dv">1</span>, <span class="dt">February =</span> <span class="dv">2</span>, <span class="dt">March =</span> <span class="dv">3</span>, <span class="dt">April =</span> <span class="dv">4</span>, <span class="dt">May =</span> <span class="dv">5</span>, <span class="dt">June =</span> <span class="dv">6</span>,</a>
+<a class="sourceLine" id="cb26-61" data-line-number="61">        <span class="dt">July =</span> <span class="dv">7</span>, <span class="dt">August =</span> <span class="dv">8</span>, <span class="dt">September =</span> <span class="dv">9</span>, <span class="dt">October =</span> <span class="dv">10</span>, <span class="dt">November =</span> <span class="dv">11</span>, <span class="dt">December =</span> <span class="dv">12</span></a>
+<a class="sourceLine" id="cb26-62" data-line-number="62">      )</a>
+<a class="sourceLine" id="cb26-63" data-line-number="63">      dateRegex &lt;-<span class="st"> </span><span class="kw">sprintf</span>(</a>
+<a class="sourceLine" id="cb26-64" data-line-number="64">        <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*(%s),</span><span class="ch">\\</span><span class="st">s*(</span><span class="ch">\\</span><span class="st">d{1,2})</span><span class="ch">\\</span><span class="st">s+(%s)</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d{4}),</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d{1,2}</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d{2}</span><span class="ch">\\</span><span class="st">s+(a</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.|p</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.)</span><span class="ch">\\</span><span class="st">s*$&quot;</span>,</a>
+<a class="sourceLine" id="cb26-65" data-line-number="65">        <span class="kw">paste0</span>(weekdays, <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>),</a>
+<a class="sourceLine" id="cb26-66" data-line-number="66">        <span class="kw">paste0</span>(<span class="kw">names</span>(months), <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>)</a>
+<a class="sourceLine" id="cb26-67" data-line-number="67">      )</a>
+<a class="sourceLine" id="cb26-68" data-line-number="68">      dateMatch &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> dateRegex))</a>
+<a class="sourceLine" id="cb26-69" data-line-number="69">      year &lt;-<span class="st"> </span>dateMatch[<span class="dv">1</span>,<span class="dv">4</span>]</a>
+<a class="sourceLine" id="cb26-70" data-line-number="70">      month &lt;-<span class="st"> </span><span class="kw">as.integer</span>(months[dateMatch[<span class="dv">1</span>,<span class="dv">3</span>]])</a>
+<a class="sourceLine" id="cb26-71" data-line-number="71">      day &lt;-<span class="st"> </span><span class="kw">as.integer</span>(dateMatch[<span class="dv">1</span>,<span class="dv">2</span>])</a>
+<a class="sourceLine" id="cb26-72" data-line-number="72">      dateOfMeeting &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%s-%02d-%02d&quot;</span>, year, month, day)</a>
+<a class="sourceLine" id="cb26-73" data-line-number="73">      </a>
+<a class="sourceLine" id="cb26-74" data-line-number="74">      <span class="co"># get meeting</span></a>
+<a class="sourceLine" id="cb26-75" data-line-number="75">      meetingRegex &lt;-<span class="st"> &quot;</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d+)(st|nd|rd|th)</span><span class="ch">\\</span><span class="st">s+plenary</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb26-76" data-line-number="76">      meeting &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> meetingRegex))[<span class="dv">1</span>,<span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb26-77" data-line-number="77">      </a>
+<a class="sourceLine" id="cb26-78" data-line-number="78">      <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb26-79" data-line-number="79">        <span class="dt">legislativePeriod =</span> <span class="kw">as.integer</span>(session),</a>
+<a class="sourceLine" id="cb26-80" data-line-number="80">        <span class="dt">sessionNo =</span> <span class="kw">as.integer</span>(meeting),</a>
+<a class="sourceLine" id="cb26-81" data-line-number="81">        <span class="dt">date =</span> <span class="kw">as.Date</span>(dateOfMeeting),</a>
+<a class="sourceLine" id="cb26-82" data-line-number="82">        <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
+<a class="sourceLine" id="cb26-83" data-line-number="83">        <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
+<a class="sourceLine" id="cb26-84" data-line-number="84">        <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
+<a class="sourceLine" id="cb26-85" data-line-number="85">        <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
+<a class="sourceLine" id="cb26-86" data-line-number="86">        <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
+<a class="sourceLine" id="cb26-87" data-line-number="87">      )</a>
+<a class="sourceLine" id="cb26-88" data-line-number="88">    },</a>
+<a class="sourceLine" id="cb26-89" data-line-number="89"></a>
+<a class="sourceLine" id="cb26-90" data-line-number="90">    <span class="dt">xmlify =</span> <span class="cf">function</span>(id, txtfile, pdffile, xmlfile, <span class="dt">verbose =</span> <span class="ot">TRUE</span>){</a>
+<a class="sourceLine" id="cb26-91" data-line-number="91">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... getting metadata&quot;</span>)</a>
+<a class="sourceLine" id="cb26-92" data-line-number="92">      metadata &lt;-<span class="st"> </span>self<span class="op">$</span><span class="kw">getMetadata</span>(pdffile)</a>
+<a class="sourceLine" id="cb26-93" data-line-number="93">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reading plain text file: &quot;</span>, txtfile)</a>
+<a class="sourceLine" id="cb26-94" data-line-number="94">      self<span class="op">$</span><span class="kw">readFile</span>(<span class="dt">filename =</span> txtfile, <span class="dt">id =</span> id)</a>
+<a class="sourceLine" id="cb26-95" data-line-number="95">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... adding metadata that has been extracted&quot;</span>)</a>
+<a class="sourceLine" id="cb26-96" data-line-number="96">      self<span class="op">$</span><span class="kw">addMetadata</span>(<span class="dt">data =</span> metadata)</a>
+<a class="sourceLine" id="cb26-97" data-line-number="97">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making header&quot;</span>)</a>
+<a class="sourceLine" id="cb26-98" data-line-number="98">      self<span class="op">$</span><span class="kw">makeHeader</span>()</a>
+<a class="sourceLine" id="cb26-99" data-line-number="99">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... pre-processing plain text&quot;</span>)</a>
+<a class="sourceLine" id="cb26-100" data-line-number="100">      self<span class="op">$</span><span class="kw">preprocessing</span>()</a>
+<a class="sourceLine" id="cb26-101" data-line-number="101">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... splitting up by speakers&quot;</span>)</a>
+<a class="sourceLine" id="cb26-102" data-line-number="102">      self<span class="op">$</span><span class="kw">splitBySpeakers</span>()</a>
+<a class="sourceLine" id="cb26-103" data-line-number="103">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reconstructing paragraphs&quot;</span>)</a>
+<a class="sourceLine" id="cb26-104" data-line-number="104">      self<span class="op">$</span><span class="kw">reconstructParagraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a>
+<a class="sourceLine" id="cb26-105" data-line-number="105">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making body&quot;</span>)</a>
+<a class="sourceLine" id="cb26-106" data-line-number="106">      self<span class="op">$</span><span class="kw">makeBody</span>(<span class="dt">agendaItems =</span> <span class="ot">FALSE</span>)</a>
+<a class="sourceLine" id="cb26-107" data-line-number="107">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... saving TEI document to file: &quot;</span>, teifile)</a>
+<a class="sourceLine" id="cb26-108" data-line-number="108">      self<span class="op">$</span><span class="kw">saveXML</span>(<span class="dt">filename =</span> xmlfile)</a>
+<a class="sourceLine" id="cb26-109" data-line-number="109">      <span class="kw">invisible</span>(self<span class="op">$</span>xml)</a>
+<a class="sourceLine" id="cb26-110" data-line-number="110">    }</a>
+<a class="sourceLine" id="cb26-111" data-line-number="111">  )</a>
+<a class="sourceLine" id="cb26-112" data-line-number="112">)</a></code></pre></div>
 <p>Having the defined our specified class for processing UN General Assembly documents, much less code is required to process a single document.</p>
-<div class="sourceCode" id="cb29"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb29-1" data-line-number="1">UNGAParser &lt;-<span class="st"> </span>VerbatimRecordUNGA<span class="op">$</span><span class="kw">new</span>()</a>
-<a class="sourceLine" id="cb29-2" data-line-number="2">teifile &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
-<a class="sourceLine" id="cb29-3" data-line-number="3">tei &lt;-<span class="st"> </span>UNGAParser<span class="op">$</span><span class="kw">xmlify</span>(<span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>, <span class="dt">txtfile =</span> undoc_tmp, <span class="dt">pdffile =</span> doc, <span class="dt">xmlfile =</span> teifile)</a></code></pre></div>
+<div class="sourceCode" id="cb27"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb27-1" data-line-number="1">UNGAParser &lt;-<span class="st"> </span>VerbatimRecordUNGA<span class="op">$</span><span class="kw">new</span>()</a>
+<a class="sourceLine" id="cb27-2" data-line-number="2">teifile &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
+<a class="sourceLine" id="cb27-3" data-line-number="3">tei &lt;-<span class="st"> </span>UNGAParser<span class="op">$</span><span class="kw">xmlify</span>(<span class="dt">id =</span> <span class="st">&quot;A/71/PV.1&quot;</span>, <span class="dt">txtfile =</span> undoc_tmp, <span class="dt">pdffile =</span> doc, <span class="dt">xmlfile =</span> teifile)</a></code></pre></div>
 <p>To check whether the result is ok, use <code>cat(as.character(tei))</code>.</p>
 </div>
 <div id="processing-multiple-documents" class="section level2">
 <h2>Processing multiple documents</h2>
 <p>Usually, we want to process many protocols, not just one. Having prepared a class that is specialized to process a specific type of plenary protocol is the basis for moving to batch processing multiple documents. The following block of code may serve as an example how we might loop over multiple documents.</p>
-<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb30-1" data-line-number="1">pdfdir &lt;-<span class="st"> </span><span class="kw">tempdir</span>()</a>
-<a class="sourceLine" id="cb30-2" data-line-number="2">txtdir &lt;-<span class="st"> </span><span class="kw">tempdir</span>()</a>
-<a class="sourceLine" id="cb30-3" data-line-number="3">xmldir &lt;-<span class="st"> </span><span class="kw">tempdir</span>()</a>
-<a class="sourceLine" id="cb30-4" data-line-number="4">txtFilesToProcess &lt;-<span class="st"> </span><span class="kw">Sys.glob</span>(<span class="dt">paths =</span> <span class="kw">sprintf</span>(<span class="st">&quot;%s/*.txt&quot;</span>, txtdir))</a>
-<a class="sourceLine" id="cb30-5" data-line-number="5"></a>
-<a class="sourceLine" id="cb30-6" data-line-number="6">UNGAParser &lt;-<span class="st"> </span>VerbatimRecordUNGA<span class="op">$</span><span class="kw">new</span>()</a>
-<a class="sourceLine" id="cb30-7" data-line-number="7"></a>
-<a class="sourceLine" id="cb30-8" data-line-number="8"><span class="kw">lapply</span>(</a>
-<a class="sourceLine" id="cb30-9" data-line-number="9">  txtFilesToProcess,</a>
-<a class="sourceLine" id="cb30-10" data-line-number="10">  <span class="cf">function</span>(txtfile){</a>
-<a class="sourceLine" id="cb30-11" data-line-number="11">    UNGAParser<span class="op">$</span><span class="kw">xmlify</span>(</a>
-<a class="sourceLine" id="cb30-12" data-line-number="12">      <span class="dt">id =</span> <span class="kw">basename</span>(txtfile),</a>
-<a class="sourceLine" id="cb30-13" data-line-number="13">      <span class="dt">txtfile =</span> txtfile,</a>
-<a class="sourceLine" id="cb30-14" data-line-number="14">      <span class="dt">pdffile =</span> <span class="kw">file.path</span>(pdfdir, <span class="kw">gsub</span>(<span class="st">&quot;^(.*?)</span><span class="ch">\\</span><span class="st">.txt$&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">1.pdf&quot;</span>, <span class="kw">basename</span>(txtfile))),</a>
-<a class="sourceLine" id="cb30-15" data-line-number="15">      <span class="dt">xmlfile =</span> <span class="kw">file.path</span>(pdfdir, <span class="kw">gsub</span>(<span class="st">&quot;^(.*?)</span><span class="ch">\\</span><span class="st">.txt$&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">1.xml&quot;</span>, <span class="kw">basename</span>(txtfile)))</a>
-<a class="sourceLine" id="cb30-16" data-line-number="16">    )</a>
-<a class="sourceLine" id="cb30-17" data-line-number="17">    <span class="kw">return</span>(<span class="ot">TRUE</span>)</a>
-<a class="sourceLine" id="cb30-18" data-line-number="18">  })</a></code></pre></div>
+<div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb28-1" data-line-number="1">pdfdir &lt;-<span class="st"> </span><span class="kw">tempdir</span>()</a>
+<a class="sourceLine" id="cb28-2" data-line-number="2">txtdir &lt;-<span class="st"> </span><span class="kw">tempdir</span>()</a>
+<a class="sourceLine" id="cb28-3" data-line-number="3">xmldir &lt;-<span class="st"> </span><span class="kw">tempdir</span>()</a>
+<a class="sourceLine" id="cb28-4" data-line-number="4">txtFilesToProcess &lt;-<span class="st"> </span><span class="kw">Sys.glob</span>(<span class="dt">paths =</span> <span class="kw">sprintf</span>(<span class="st">&quot;%s/*.txt&quot;</span>, txtdir))</a>
+<a class="sourceLine" id="cb28-5" data-line-number="5"></a>
+<a class="sourceLine" id="cb28-6" data-line-number="6">UNGAParser &lt;-<span class="st"> </span>VerbatimRecordUNGA<span class="op">$</span><span class="kw">new</span>()</a>
+<a class="sourceLine" id="cb28-7" data-line-number="7"></a>
+<a class="sourceLine" id="cb28-8" data-line-number="8"><span class="kw">lapply</span>(</a>
+<a class="sourceLine" id="cb28-9" data-line-number="9">  txtFilesToProcess,</a>
+<a class="sourceLine" id="cb28-10" data-line-number="10">  <span class="cf">function</span>(txtfile){</a>
+<a class="sourceLine" id="cb28-11" data-line-number="11">    UNGAParser<span class="op">$</span><span class="kw">xmlify</span>(</a>
+<a class="sourceLine" id="cb28-12" data-line-number="12">      <span class="dt">id =</span> <span class="kw">basename</span>(txtfile),</a>
+<a class="sourceLine" id="cb28-13" data-line-number="13">      <span class="dt">txtfile =</span> txtfile,</a>
+<a class="sourceLine" id="cb28-14" data-line-number="14">      <span class="dt">pdffile =</span> <span class="kw">file.path</span>(pdfdir, <span class="kw">gsub</span>(<span class="st">&quot;^(.*?)</span><span class="ch">\\</span><span class="st">.txt$&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">1.pdf&quot;</span>, <span class="kw">basename</span>(txtfile))),</a>
+<a class="sourceLine" id="cb28-15" data-line-number="15">      <span class="dt">xmlfile =</span> <span class="kw">file.path</span>(pdfdir, <span class="kw">gsub</span>(<span class="st">&quot;^(.*?)</span><span class="ch">\\</span><span class="st">.txt$&quot;</span>, <span class="st">&quot;</span><span class="ch">\\</span><span class="st">1.xml&quot;</span>, <span class="kw">basename</span>(txtfile)))</a>
+<a class="sourceLine" id="cb28-16" data-line-number="16">    )</a>
+<a class="sourceLine" id="cb28-17" data-line-number="17">    <span class="kw">return</span>(<span class="ot">TRUE</span>)</a>
+<a class="sourceLine" id="cb28-18" data-line-number="18">  })</a></code></pre></div>
 <pre><code>## list()</code></pre>
+<p>Enjoy using <em>frappp</em>!</p>
 </div>
-<div id="annex-1-the-tei-template" class="section level2">
-<h2>Annex 1: The TEI template</h2>
-<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb32-1" data-line-number="1">teiTemplate &lt;-<span class="st"> </span>xml2<span class="op">::</span><span class="kw">read_xml</span>(<span class="kw">system.file</span>(<span class="st">&quot;xml&quot;</span>, <span class="st">&quot;teiTemplate.xml&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;frappp&quot;</span>))</a>
-<a class="sourceLine" id="cb32-2" data-line-number="2"><span class="kw">cat</span>(<span class="kw">as.character</span>(teiTemplate))</a></code></pre></div>
+<div id="annexes" class="section level2">
+<h2>Annexes</h2>
+<div id="annex-1-the-tei-template" class="section level3">
+<h3>Annex 1: The TEI template</h3>
+<div class="sourceCode" id="cb30"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb30-1" data-line-number="1">teiTemplate &lt;-<span class="st"> </span>xml2<span class="op">::</span><span class="kw">read_xml</span>(<span class="kw">system.file</span>(<span class="st">&quot;xml&quot;</span>, <span class="st">&quot;teiTemplate.xml&quot;</span>, <span class="dt">package =</span> <span class="st">&quot;frappp&quot;</span>))</a>
+<a class="sourceLine" id="cb30-2" data-line-number="2"><span class="kw">cat</span>(<span class="kw">as.character</span>(teiTemplate))</a></code></pre></div>
 <pre><code>## &lt;?xml version=&quot;1.0&quot; encoding=&quot;UTF-8&quot; standalone=&quot;no&quot;?&gt;
 ## &lt;TEI&gt;
 ##   &lt;teiHeader&gt;
@@ -647,6 +654,43 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 ##   &lt;/text&gt;
 ## &lt;/TEI&gt;</code></pre>
 </div>
+<div id="annex-2-default-xpath-expressions" class="section level3">
+<h3>Annex 2: Default XPath expressions</h3>
+<div class="sourceCode" id="cb32"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb32-1" data-line-number="1">teiXpath</a></code></pre></div>
+<pre><code>## $title
+## [1] &quot;//TEI/teiHeader/fileDesc/titleStmt/title&quot;
+## 
+## $legislativePeriod
+## [1] &quot;//TEI/teiHeader/fileDesc/titleStmt/legislativePeriod&quot;
+## 
+## $sessionNo
+## [1] &quot;//TEI/teiHeader/fileDesc/titleStmt/sessionNo&quot;
+## 
+## $date
+## [1] &quot;//TEI/teiHeader/fileDesc/publicationStmt/date&quot;
+## 
+## $publisher
+## [1] &quot;//TEI/teiHeader/fileDesc/publicationStmt/publisher&quot;
+## 
+## $url
+## [1] &quot;//TEI/teiHeader/fileDesc/sourceDesc/url&quot;
+## 
+## $filetype
+## [1] &quot;//TEI/teiHeader/fileDesc/sourceDesc/filetype&quot;
+## 
+## $retrievalDate
+## [1] &quot;//TEI/teiHeader/fileDesc/sourceDesc/date&quot;
+## 
+## $package
+## [1] &quot;//TEI/teiHeader/fileDesc/editionStmt/edition/package&quot;
+## 
+## $version
+## [1] &quot;//TEI/teiHeader/fileDesc/editionStmt/edition/version&quot;
+## 
+## $birthday
+## [1] &quot;//TEI/teiHeader/fileDesc/editionStmt/edition/birthday&quot;</code></pre>
+</div>
+</div>
 <div id="annex-2-the-final-short-tei-document" class="section level2">
 <h2>Annex 2: The final short TEI document</h2>
 <div class="sourceCode" id="cb34"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb34-1" data-line-number="1"><span class="kw">cat</span>(<span class="kw">as.character</span>(tei))</a></code></pre></div>
@@ -663,7 +707,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 ##         &lt;edition&gt;
 ##           &lt;package&gt;frappp&lt;/package&gt;
 ##           &lt;version&gt;0.4.0&lt;/version&gt;
-##           &lt;birthday&gt;2018-03-26&lt;/birthday&gt;
+##           &lt;birthday&gt;2018-03-27&lt;/birthday&gt;
 ##         &lt;/edition&gt;
 ##       &lt;/editionStmt&gt;
 ##       &lt;publicationStmt&gt;
@@ -687,68 +731,60 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 ##   &lt;/teiHeader&gt;
 ##   &lt;text&gt;
 ##     &lt;body&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;1&quot; desc=&quot;Minute of silent prayer or meditation&quot;&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;I declare open the seventy-first session of the General Assembly.&lt;/p&gt;
-##           &lt;p&gt;Item 2 of the provisional agenda&lt;/p&gt;
-##           &lt;p&gt;Minute of silent prayer or meditation&lt;/p&gt;
-##         &lt;/sp&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;In accordance with rule 62 of the rules of procedure, I invite representatives to stand and observe one minute of silent prayer or meditation. The members of the General Assembly observed a minute of silent prayer or meditation.&lt;/p&gt;
-##         &lt;/sp&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;I now give the floor to the Secretary-General, His Excellency Mr. Ban Ki-moon.&lt;/p&gt;
-##         &lt;/sp&gt;
-##         &lt;sp who=&quot;The Secretary-General&quot; state=&quot;NA&quot; role=&quot;secretary-general&quot; position=&quot;secretary-general&quot;&gt;
-##           &lt;speaker&gt;The Secretary-General:&lt;/speaker&gt;
-##           &lt;p&gt;It is a great pleasure to join everyone for the opening of the seventy-first session of the General Assembly. I congratulate most sincerely His Excellency Mr. Peter Thomson of Fiji on assuming the very important Office of the President. Fiji is on the front lines of many key issues on the international agenda, from climate change to disasterrisk reduction, to promoting growth and prosperity for all. His country’s perspectives will certainly enrich our deliberations in the months ahead. I welcome the theme that he chose for this session, namely, “The Sustainable Development Goals: a universal push to transform our world”.&lt;/p&gt;
-##           &lt;p&gt;This first year is crucial. It is a time when all Member States should align their policies, programmes and spending behind the 17 Goals. It is also time to bring the Paris Agreement on climate change into force. The high-level event I will host on 21 September will strengthen momentum for achieving that objective this year. The third United Nations Conference on Human Settlements (Habitat III), to be held next month in Quito, will be a further opportunity. I look forward to hearing members’ strong voice across our agenda. The Assembly will begin work in earnest on Monday with a summit on the plight of refugees and migrants. And of course, on 1 January 2017, the seventyfirst session will welcome the ninth Secretary-General into the Hall and the Secretariat conference rooms. You, Mr. President, will serve as a bridge between my administration and the next, as you said in your acceptance speech (see A/70/PV.118). You will have my full support and that of my team in ensuring a seamless transition. The Assembly will be called upon to address many threats and show its solidarity with people facing injustice. People also look to this organ not just to react to problems, but to work proactively and preventively to better the human condition.&lt;/p&gt;
-##           &lt;p&gt;I know, Sir, that you have been undertaking wide-ranging consultations in preparation for the duties you now assume. The Secretariat and I look forward to working closely with you towards a session that produces meaningful results for all. I count on your strong leadership.&lt;/p&gt;
-##         &lt;/sp&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;I thank the Secretary-General for his statement.&lt;/p&gt;
-##           &lt;p&gt;Item 138 of the provisional agenda&lt;/p&gt;
-##           &lt;p&gt;Scale of assessments for the apportionment of the expenses of the United Nations (A/71/381)&lt;/p&gt;
-##         &lt;/sp&gt;
-##       &lt;/div&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;2&quot; desc=&quot;Scale of assessments for the apportionme...&quot;&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;Next, I would like, in keeping with established practice, to invite the attention of the General Assembly to document A/71/381. It contains a letter from the Secretary-General addressed to the President of the General Assembly, in which he informs the Assembly that four Member States are in arrears in the payment of their financial contributions to the United Nations within the terms of Article 19 of the Charter.&lt;/p&gt;
-##           &lt;p&gt;I would like to remind delegations that, under Article 19 of the Charter,&lt;/p&gt;
-##           &lt;p&gt;“A Member of the United Nations which is in arrears in the payment of its financial contributions to the Organization shall have no vote in the General Assembly if the amount of its arrears equals or exceeds the amount of the contributions due from it for the preceding two full years”.&lt;/p&gt;
-##           &lt;p&gt;May I take it that the General Assembly takes note of the information contained in document A/71/381? It was so decided.&lt;/p&gt;
-##           &lt;p&gt;Item 3 of the provisional agenda&lt;/p&gt;
-##           &lt;p&gt;Credentials of representatives to the seventy-first session of the General Assembly&lt;/p&gt;
-##           &lt;p&gt;(a) Appointment of the members of the Credentials Committee&lt;/p&gt;
-##         &lt;/sp&gt;
-##       &lt;/div&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;3&quot; desc=&quot;Credentials of representatives to the se...&quot;&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;Rule 28 of the rules of procedure provides that the General Assembly at the beginning of each session shall appoint, on the proposal of the President, a Credentials Committee consisting of nine members.&lt;/p&gt;
-##           &lt;p&gt;Accordingly, it is proposed that, for the seventyfirst session, the Credentials Committee should consist of the following Member States: Cameroon, China, Malawi, the Netherlands, Paraguay, the Republic of Korea, the Russian Federation, Saint Lucia, and the United States of America.&lt;/p&gt;
-##           &lt;p&gt;May I take it that the States that I have just mentioned are hereby appointed members of the Credentials Committee?&lt;/p&gt;
-##           &lt;p&gt;It was so decided.&lt;/p&gt;
-##           &lt;p&gt;Item 7 of the provisional agenda&lt;/p&gt;
-##           &lt;p&gt;Organization of work of the seventy-first session of the General Assembly&lt;/p&gt;
-##           &lt;p&gt;Letter from the Chair of the Committee on Conferences (A/71/382)&lt;/p&gt;
-##         &lt;/sp&gt;
-##       &lt;/div&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;4&quot; desc=&quot;Organization of work of the seventy-firs...&quot;&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;The Assembly will now turn its attention to document A/71/382, which contains a letter dated 7 September 2016 from the Chair of the Committee on Conferences addressed to the President of the General Assembly. Members are aware that, pursuant to section 1, paragraph 7, of Assembly resolution 40/243, of 18 December 1985, no subsidiary organ of the General Assembly should be permitted to meet at United Nations Headquarters during the main part of a regular session of the Assembly, unless explicitly authorized by the Assembly.&lt;/p&gt;
-##           &lt;p&gt;On the strict understanding that meetings would have to be accommodated within available facilities and services, authorization is thus sought for the following subsidiary organs: the United Nations Appeals Tribunal; the Committee on Relations with the Host Country; the Committee on the Exercise of the Inalienable Rights of the Palestinian People; the Executive Board of the United Nations Children’s Fund; the United Nations System Chief Executives Board for Coordination; the Board of Auditors; the Panel of External Auditors of the United Nations; the Specialized Agencies; the International Atomic Energy Agency; the Independent Audit Advisory Committee; and the Committee on Conferences itself.&lt;/p&gt;
-##           &lt;p&gt;May I take it that it is the wish of the General Assembly to authorize those subsidiary organs of the Assembly to meet during the main part of the seventyfirst session of the General Assembly?&lt;/p&gt;
-##           &lt;p&gt;It was so decided.&lt;/p&gt;
-##           &lt;stage type=&quot;end_of_session&quot;&gt;The meeting rose at 4 p.m.&lt;/stage&gt;
-##         &lt;/sp&gt;
-##       &lt;/div&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;I declare open the seventy-first session of the General Assembly.&lt;/p&gt;
+##         &lt;p&gt;Item 2 of the provisional agenda&lt;/p&gt;
+##         &lt;p&gt;Minute of silent prayer or meditation&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;In accordance with rule 62 of the rules of procedure, I invite representatives to stand and observe one minute of silent prayer or meditation. The members of the General Assembly observed a minute of silent prayer or meditation.&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;I now give the floor to the Secretary-General, His Excellency Mr. Ban Ki-moon.&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The Secretary-General&quot; state=&quot;NA&quot; role=&quot;secretary-general&quot; position=&quot;secretary-general&quot;&gt;
+##         &lt;speaker&gt;The Secretary-General:&lt;/speaker&gt;
+##         &lt;p&gt;It is a great pleasure to join everyone for the opening of the seventy-first session of the General Assembly. I congratulate most sincerely His Excellency Mr. Peter Thomson of Fiji on assuming the very important Office of the President. Fiji is on the front lines of many key issues on the international agenda, from climate change to disasterrisk reduction, to promoting growth and prosperity for all. His country’s perspectives will certainly enrich our deliberations in the months ahead. I welcome the theme that he chose for this session, namely, “The Sustainable Development Goals: a universal push to transform our world”.&lt;/p&gt;
+##         &lt;p&gt;This first year is crucial. It is a time when all Member States should align their policies, programmes and spending behind the 17 Goals. It is also time to bring the Paris Agreement on climate change into force. The high-level event I will host on 21 September will strengthen momentum for achieving that objective this year. The third United Nations Conference on Human Settlements (Habitat III), to be held next month in Quito, will be a further opportunity. I look forward to hearing members’ strong voice across our agenda. The Assembly will begin work in earnest on Monday with a summit on the plight of refugees and migrants. And of course, on 1 January 2017, the seventyfirst session will welcome the ninth Secretary-General into the Hall and the Secretariat conference rooms. You, Mr. President, will serve as a bridge between my administration and the next, as you said in your acceptance speech (see A/70/PV.118). You will have my full support and that of my team in ensuring a seamless transition. The Assembly will be called upon to address many threats and show its solidarity with people facing injustice. People also look to this organ not just to react to problems, but to work proactively and preventively to better the human condition.&lt;/p&gt;
+##         &lt;p&gt;I know, Sir, that you have been undertaking wide-ranging consultations in preparation for the duties you now assume. The Secretariat and I look forward to working closely with you towards a session that produces meaningful results for all. I count on your strong leadership.&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;I thank the Secretary-General for his statement.&lt;/p&gt;
+##         &lt;p&gt;Item 138 of the provisional agenda&lt;/p&gt;
+##         &lt;p&gt;Scale of assessments for the apportionment of the expenses of the United Nations (A/71/381)&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;Next, I would like, in keeping with established practice, to invite the attention of the General Assembly to document A/71/381. It contains a letter from the Secretary-General addressed to the President of the General Assembly, in which he informs the Assembly that four Member States are in arrears in the payment of their financial contributions to the United Nations within the terms of Article 19 of the Charter.&lt;/p&gt;
+##         &lt;p&gt;I would like to remind delegations that, under Article 19 of the Charter,&lt;/p&gt;
+##         &lt;p&gt;“A Member of the United Nations which is in arrears in the payment of its financial contributions to the Organization shall have no vote in the General Assembly if the amount of its arrears equals or exceeds the amount of the contributions due from it for the preceding two full years”.&lt;/p&gt;
+##         &lt;p&gt;May I take it that the General Assembly takes note of the information contained in document A/71/381? It was so decided.&lt;/p&gt;
+##         &lt;p&gt;Item 3 of the provisional agenda&lt;/p&gt;
+##         &lt;p&gt;Credentials of representatives to the seventy-first session of the General Assembly&lt;/p&gt;
+##         &lt;p&gt;(a) Appointment of the members of the Credentials Committee&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;Rule 28 of the rules of procedure provides that the General Assembly at the beginning of each session shall appoint, on the proposal of the President, a Credentials Committee consisting of nine members.&lt;/p&gt;
+##         &lt;p&gt;Accordingly, it is proposed that, for the seventyfirst session, the Credentials Committee should consist of the following Member States: Cameroon, China, Malawi, the Netherlands, Paraguay, the Republic of Korea, the Russian Federation, Saint Lucia, and the United States of America.&lt;/p&gt;
+##         &lt;p&gt;May I take it that the States that I have just mentioned are hereby appointed members of the Credentials Committee?&lt;/p&gt;
+##         &lt;p&gt;It was so decided.&lt;/p&gt;
+##         &lt;p&gt;Item 7 of the provisional agenda&lt;/p&gt;
+##         &lt;p&gt;Organization of work of the seventy-first session of the General Assembly&lt;/p&gt;
+##         &lt;p&gt;Letter from the Chair of the Committee on Conferences (A/71/382)&lt;/p&gt;
+##       &lt;/sp&gt;
+##       &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##         &lt;speaker&gt;The President:&lt;/speaker&gt;
+##         &lt;p&gt;The Assembly will now turn its attention to document A/71/382, which contains a letter dated 7 September 2016 from the Chair of the Committee on Conferences addressed to the President of the General Assembly. Members are aware that, pursuant to section 1, paragraph 7, of Assembly resolution 40/243, of 18 December 1985, no subsidiary organ of the General Assembly should be permitted to meet at United Nations Headquarters during the main part of a regular session of the Assembly, unless explicitly authorized by the Assembly.&lt;/p&gt;
+##         &lt;p&gt;On the strict understanding that meetings would have to be accommodated within available facilities and services, authorization is thus sought for the following subsidiary organs: the United Nations Appeals Tribunal; the Committee on Relations with the Host Country; the Committee on the Exercise of the Inalienable Rights of the Palestinian People; the Executive Board of the United Nations Children’s Fund; the United Nations System Chief Executives Board for Coordination; the Board of Auditors; the Panel of External Auditors of the United Nations; the Specialized Agencies; the International Atomic Energy Agency; the Independent Audit Advisory Committee; and the Committee on Conferences itself.&lt;/p&gt;
+##         &lt;p&gt;May I take it that it is the wish of the General Assembly to authorize those subsidiary organs of the Assembly to meet during the main part of the seventyfirst session of the General Assembly?&lt;/p&gt;
+##         &lt;p&gt;It was so decided.&lt;/p&gt;
+##         &lt;stage type=&quot;end_of_session&quot;&gt;The meeting rose at 4 p.m.&lt;/stage&gt;
+##       &lt;/sp&gt;
 ##     &lt;/body&gt;
 ##   &lt;/text&gt;
 ## &lt;/TEI&gt;</code></pre>

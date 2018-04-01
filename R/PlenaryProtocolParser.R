@@ -88,12 +88,14 @@
 #'   \item{\code{metadata}}{named character vector with metainformation}
 #'   \item{\code{replacements}}{list of length 2 character vectors, providing regular expressions and replacements (as input to \code{gsub})}
 #'   \item{\code{data}}{additional metadata }
-#'   \item{\code{maxLengthWho}}{maximum length of speaker names, no annotation if name of speaker is longer than threshold}
+#'   \item{\code{maxLengthWho}}{maximum length of speaker names, no annotation
+#'   if name of speaker is longer than threshold}
 #'   \item{\code{exclude}}{types of speakers not to consider when reconstructing paragraphs}
 #'   \item{\code{chunkNos}}{integer vector, chunks in the field $chunks to process}
 #'   \item{\code{parent}}{an XML node, where to put speaker node}
 #'   \item{\code{chunkNo}}{integer vecotr, chunk in the field $chunks to process}
-#'   \item{\code{maxNcharAgendaItemDesc}}{maximum number of characters to extract as value of attribute describing an agenda item}
+#'   \item{\code{maxNcharAgendaItemDesc}}{maximum number of characters to
+#'   extract as value of attribute describing an agenda item}
 #'   \item{\code{template}}{filename of a template of a TEI document}
 #'   \item{\code{agendaItems}}{logical, whether to annotate agenda items}
 #'   \item{\code{txtfile}}{input plain text file (full filename)}
@@ -101,6 +103,8 @@
 #'   \item{\code{regex}}{a regular expression}
 #'   \item{\code{ncharContext}}{integer, number of characters in the context of regex}
 #'   \item{\code{verbose}}{logical, whether to output messages }
+#'   \item{\code{n}}{the number of lines that will maximally be collapsed to
+#'   check whether one of the stageRegex matches}
 #' }
 #' @section Methods:
 #' \describe{
@@ -132,7 +136,10 @@
 #'   \item{\code{getChunkData(maxLengthWho = 60)}}{extract speaker data by
 #'   applying regular expressions in $speakerRegex; the result is stored in the
 #'   field $chunkData}
-#'   \item{\code{$concatenateMultilineInterjections()}}{}
+#'   \item{\code{$locateStageInstructions(n = 2)}}{Identify stage instructions (such as interjections etc.) by applying 
+#'   the regular expressions in the field \code{stageRegex}; to be able to cope with multiline stage
+#'   instructions, lines will be concatenated successively. If multiple regexes might match, only the 
+#'   first match will be found in the result. The same is true for the number of lines.}
 #'   \item{\code{$concatenateParagraphs(exclude = "pres")}}{This function
 #'   concatenates paragraphs that are splitted (i.e. the text does not end with
 #'   an interpuncutation) by applying a regex. It includes an exlude parameter:
@@ -173,7 +180,7 @@
 #' @export PlenaryProtocolParser
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
-#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child xml_find_all xml_name
+#' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child xml_find_all xml_name xml_children
 #' @importFrom gsubfn strapply strapplyc
 #' @importFrom R6 R6Class
 #' @importFrom markdown markdownToHTML
@@ -342,35 +349,25 @@ PlenaryProtocolParser <- R6Class(
 		},
 		
 		
-		concatenateMultilineInterjections = function(){
-		  chunks <- self$chunks
-		  chunksNew <- lapply(
-		    1:length(chunks),
-		    function(k){
-		      chunk <- chunks[[k]]
-		      openingBrackets <- grep("^\\s*\\((?!.*\\)).*$", chunk, perl=TRUE)
-		      closingBrackets <- grep("^(?!\\s*\\().*\\)\\s*$", chunk, perl=TRUE)
-		      names(openingBrackets) <- rep("(", times=length(openingBrackets))
-		      names(closingBrackets) <- rep(")", times=length(closingBrackets))
-		      brackets <- c(openingBrackets, closingBrackets)
-		      brackets <- brackets[order(brackets, decreasing=FALSE)]
-		      bracketSoup <- paste(names(brackets), sep="", collapse="")
-		      bracketPairs <- stringi::stri_locate_all_regex(bracketSoup, pattern="\\(\\)")[[1]]
-		      if (nrow(bracketPairs) > 0 && any(is.na(as.character(bracketPairs))) == FALSE){
-		        chunkList <- as.list(chunk)
-		        for(i in c(nrow(bracketPairs):1)){
-		          concatIntRaw <- paste(chunk[c(brackets[bracketPairs[i,1]]:brackets[bracketPairs[i,2]])], collapse=" ")
-		          concatInt <- gsub("^\\s*(.*)\\s*$", "\\1", concatIntRaw)
-		          concatInt <- gsub("\\s+", " ", concatInt)
-		          chunkList[[brackets[bracketPairs[i,1]]]] <- concatInt
-		          for (j in c(brackets[bracketPairs[i,2]]:(brackets[bracketPairs[i,1]] + 1))) chunkList[[j]] <- NULL
+		locateStageInstructions = function(n = 2L){
+		  if (n <= 1L) stop("locateStageInstructions-method: n needs to be an integer value of 1 or higher")
+		  txt <- self$txt
+		  names(txt) <- rep(x = "", times = length(txt))
+		  for (i in 1L:n){
+		    vecs <- sapply(1L:i, function(j) txt[j:(length(txt) - (i - j))])
+		    collapsed <- apply(vecs, 1, function(x) paste0(x, collapse = " "))
+		    for (regexID in 1L:length(self$stageRegex)){
+		      matches <- which(grepl(self$stageRegex[[regexID]], collapsed) == TRUE)
+		      for (m in rev(matches)){
+		        if (all(names(txt)[m:(m + i - 1L)] == "")){
+		          txt[m] <- collapsed[m]
+		          names(txt)[m] <- names(self$stageRegex)[[regexID]]
+		          if (i > 1L) txt <- txt[-((m + 1L):(m + i - 1L))] 
 		        }
-		        chunk <- unlist(chunkList)
 		      }
-		      return(chunk)
-		    })
-		  names(chunksNew) <- names(chunks)
-		  self$chunks <- chunksNew
+		    }
+		  }
+		  self$txt <- txt
 		},
 		
 		

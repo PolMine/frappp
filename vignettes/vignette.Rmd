@@ -2,7 +2,7 @@
 title: "Introducing the Framework for Parsing Plenary Protocols (frappp)"
 author: "Andreas Blätte (andreas.blaette@uni-due.de)"
 date: "`r Sys.Date()`"
-output: rmarkdown::pdf_document
+output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Introducing the Framework for Parsing Plenary Protocols}
   %\VignetteEncoding{UTF-8}
