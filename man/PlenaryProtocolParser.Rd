@@ -131,7 +131,7 @@ PPP <- PlenaryProtocolParser$new()
   \item{\code{get_chunk_data()}}{extract speaker data by
   applying regular expressions in $speaker_regex; the result is stored in the
   field $chunk_data}
-  \item{\code{$detect_stage_instructions(n = 2L)}}{Identify stage instructions (such as interjections etc.) by applying 
+  \item{\code{$detect_regex_matches(n = 2L)}}{Identify stage instructions (such as interjections etc.) by applying 
   the regular expressions in the field \code{stageRegex}; to be able to cope with multiline stage
   instructions, lines will be concatenated successively. If multiple regexes might match, only the 
   first match will be found in the result. The same is true for the number of lines.}

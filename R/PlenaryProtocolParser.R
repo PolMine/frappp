@@ -127,7 +127,7 @@
 #'   \item{\code{get_chunk_data()}}{extract speaker data by
 #'   applying regular expressions in $speaker_regex; the result is stored in the
 #'   field $chunk_data}
-#'   \item{\code{$detect_stage_instructions(n = 2L)}}{Identify stage instructions (such as interjections etc.) by applying 
+#'   \item{\code{$detect_regex_matches(n = 2L)}}{Identify stage instructions (such as interjections etc.) by applying 
 #'   the regular expressions in the field \code{stageRegex}; to be able to cope with multiline stage
 #'   instructions, lines will be concatenated successively. If multiple regexes might match, only the 
 #'   first match will be found in the result. The same is true for the number of lines.}
@@ -346,29 +346,27 @@ PlenaryProtocolParser <- R6Class(
 		},
 		
 		
-		detect_stage_instructions = function(n = 2L){
-		  if (is.null(self$stage_regex)){
-		    warning("field $stage_regex is NULL - no regular expressions defined to detect stage instructions; ",
-		            "returning object unchanged")
-		    return(self)
-		  }
-		    
-		  if (n <= 1L) stop("detect_stage_instructions-method: n needs to be an integer value of 1 or higher")
+		detect_regex_matches = function(n = 2L){
+		  if (n <= 1L) stop("detect_regex_matches-method: n needs to be an integer value of 1 or higher")
 		  txt <- self$txt
+		  regex <- sapply(self$speaker_regex, function(x) x[["regex"]])
+		  names(regex) <- sprintf("[%s]", names(regex))
+		  regex <- c(regex, self$stage_regex)
 		  for (i in 1L:n){
 		    vecs <- sapply(1L:i, function(j) txt[j:(length(txt) - (i - j))])
 		    collapsed <- apply(vecs, 1, function(x) paste0(x, collapse = " "))
-		    for (regexID in 1L:length(self$stage_regex)){
-		      matches <- which(grepl(self$stage_regex[[regexID]], collapsed) == TRUE)
+		    for (regexID in 1L:length(regex)){
+		      matches <- grep(regex[regexID], collapsed)
 		      for (m in rev(matches)){
 		        if (all(names(txt)[m:(m + i - 1L)] == "")){
 		          txt[m] <- collapsed[m]
-		          names(txt)[m] <- names(self$stage_regex)[[regexID]]
+		          names(txt)[m] <- names(regex)[regexID]
 		          if (i > 1L) txt <- txt[-((m + 1L):(m + i - 1L))] 
 		        }
 		      }
 		    }
 		  }
+		  names(txt)[grep("^\\[.*?\\]$", names(txt))] <- ""
 		  self$txt <- txt
 		  invisible(self)
 		},
@@ -526,7 +524,7 @@ PlenaryProtocolParser <- R6Class(
 		
 		make_body = function(){
 		  bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
-		  if (!is.null(self$agenda_item_regex)){ # annotate agenda items if regex present
+		  if (is.null(self$agenda_item_regex)){ # annotate agenda items if regex present
 		    self$make_speaker_nodes(chunk_nos = 1:length(self$chunks), parent = bodyNode)
 		  } else {
 		    topicCallDf <- self$get_agenda_item_calls()
@@ -591,8 +589,8 @@ PlenaryProtocolParser <- R6Class(
 		  browseURL(url = tmpfile)
 		},
 		
-		browseHTML = function(){
-		  doc <- self$as.html()
+		browse_html = function(){
+		  doc <- self$as_html()
 		  htmlfile <- tempfile(fileext = ".html")
 		  cat(doc, file = htmlfile)
 		  browseURL(htmlfile)
@@ -642,7 +640,7 @@ PlenaryProtocolParser <- R6Class(
 		  regexMatchDf  
 		},
 		
-		as.html = function(){
+		as_html = function(){
 		  data <- lapply(self$xpath, function(xpath) xml_text(xml_find_all(self$xml, xpath = xpath)[[1]]))
 		  protocolTitle <- sprintf(
 		    "# %s %s/%s (%s)",

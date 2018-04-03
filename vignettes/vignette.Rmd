@@ -233,7 +233,7 @@ PPP$preprocessing() # remove leading and trailing spaces
 Fourth. Let us detect stage instructions, such as interjections.
 
 ```{r stage_instructions}
-PPP$detect_stage_instructions(n = 2L)
+PPP$detect_regex_matches(n = 2L)
 ```
 
 Fifth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
@@ -278,7 +278,7 @@ PPP$read_file(filename = undoc_tmp, id = "A/71/PV.1")$
   add_metadata(metadata = get_metadata(doc))$
   make_header()$
   preprocessing()$
-  detect_stage_instructions(n = 2L)$
+  detect_regex_matches(n = 2L)$
   split_by_speakers()$
   reconstruct_paragraphs(exclude = "pres")$
   make_body()$
@@ -407,7 +407,7 @@ VerbatimRecordUNGA <- R6Class(
       if (verbose) message("... pre-processing plain text")
       self$preprocessing()
       if (verbose) message("... detecting stage instructions")
-      self$detect_stage_instructions()
+      self$detect_regex_matches()
       if (verbose) message("... splitting up by speakers")
       self$split_by_speakers()
       if (verbose) message("... reconstructing paragraphs")
