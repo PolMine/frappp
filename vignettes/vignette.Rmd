@@ -230,7 +230,13 @@ Third. The raw text (in the field `PPP$txt`) may include some noise. A pre-proce
 PPP$preprocessing() # remove leading and trailing spaces
 ```
 
-Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
+Fourth. Let us detect stage instructions, such as interjections.
+
+```{r stage_instructions}
+PPP$detect_stage_instructions(n = 2L)
+```
+
+Fifth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
 
 ```{r make_body}
 PPP$split_by_speakers()
@@ -238,7 +244,7 @@ PPP$split_by_speakers()
 
 If you look at any of these chunks (e.g. `PPP$chunks[[2]]`), you will see that the text has been extracted nicely from the pdf document, but that paragraphs have been destroyed. 
 
-Fifth: We reconstruct the paragraphs!
+Sixth: We reconstruct the paragraphs!
 
 ```{r}
 PPP$reconstruct_paragraphs(exclude = "pres")
@@ -246,7 +252,7 @@ PPP$reconstruct_paragraphs(exclude = "pres")
 
 See `PPP$chunks[[2]]` to see the result of this procedure. When reconstructing paragraphs, the heuristic is that lines are concatenated, when their length undercuts a standard length. To guess the number of characters per line that might be optimal, the method `$showNcharHistogram()` can be used.
 
-Sixth. All preparatory steps have been performed. We now insert the speakers and the text of their speeches into the body of the XML document already present in the `$xml` field. 
+Seven. All preparatory steps have been performed. We now insert the speakers and the text of their speeches into the body of the XML document already present in the `$xml` field. 
 
 ```{r}
 PPP$make_body()
@@ -272,6 +278,7 @@ PPP$read_file(filename = undoc_tmp, id = "A/71/PV.1")$
   add_metadata(metadata = get_metadata(doc))$
   make_header()$
   preprocessing()$
+  detect_stage_instructions(n = 2L)$
   split_by_speakers()$
   reconstruct_paragraphs(exclude = "pres")$
   make_body()$
@@ -399,6 +406,8 @@ VerbatimRecordUNGA <- R6Class(
       self$make_header()
       if (verbose) message("... pre-processing plain text")
       self$preprocessing()
+      if (verbose) message("... detecting stage instructions")
+      self$detect_stage_instructions()
       if (verbose) message("... splitting up by speakers")
       self$split_by_speakers()
       if (verbose) message("... reconstructing paragraphs")

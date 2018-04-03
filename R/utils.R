@@ -11,6 +11,7 @@ paragraphize <- function(x, threshold = 40){
   # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
   # and the next line does not start with a big capital letter, the hyphen is 
   # removed.
+  if (length(x) == 1) return(x)
   x2 <- sapply(
     1:length(x),
     function(i) {

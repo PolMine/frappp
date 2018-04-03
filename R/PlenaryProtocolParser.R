@@ -227,6 +227,7 @@ PlenaryProtocolParser <- R6Class(
 		  self$metadata <- metadata
 		  
 		  self$txt <- readLines(filename)  
+		  names(self$txt) <- rep(x = "", times = length(self$txt))
 		  self$id <- id
 		  
 		  invisible(self)
@@ -354,7 +355,6 @@ PlenaryProtocolParser <- R6Class(
 		    
 		  if (n <= 1L) stop("detect_stage_instructions-method: n needs to be an integer value of 1 or higher")
 		  txt <- self$txt
-		  names(txt) <- rep(x = "", times = length(txt))
 		  for (i in 1L:n){
 		    vecs <- sapply(1L:i, function(j) txt[j:(length(txt) - (i - j))])
 		    collapsed <- apply(vecs, 1, function(x) paste0(x, collapse = " "))
@@ -378,24 +378,26 @@ PlenaryProtocolParser <- R6Class(
 		  # The general scheme is that we iterate through the chunks. Thus there 
 		  # is a helper function '.chunkProcessor' to handle the individual chunks.
 		  .processor <- function(chunk){
-		    if (length(chunk) > 1){
-		      # Each chunk is turned into a list of character vectors. The assumption here is
-		      # that concatenating paragraphs is not performed for interjections.
-		      stage <- unique(unlist(lapply(self$stage_regex, function(regex) grep(regex, chunk))))
-		      cutPoints <- unique(c(1, stage - 1, stage, length(chunk)))
-		      cutPoints <- cutPoints[order(cutPoints)]
-		      sections <- cut(
-		        x = 1:length(chunk), breaks = cutPoints,
-		        include.lowest = TRUE, right = TRUE
-		        )
-		      subchunks <- split(chunk, sections)
-		      
-		      # iterate through the list of speech and interjections.
-		      retval <- lapply(subchunks, function(x) paragraphize(x = x, threshold = threshold))
-		      return( unname(unlist(retval)) )
-		    } else {
-		      return( chunk )
-		    }
+		    if (length(chunk) == 1) return(chunk)
+		    # Each chunk is turned into a list of character vectors. The assumption here is
+		    # that concatenating paragraphs is not performed for interjections.
+		    stage <- which(names(chunk) != "")
+		    cutPoints <- unique(c(1, stage - 1, stage, length(chunk)))
+		    cutPoints <- cutPoints[order(cutPoints)]
+		    sections <- cut(
+		      x = 1:length(chunk), breaks = cutPoints,
+		      include.lowest = TRUE, right = TRUE
+		    )
+		    subchunks <- split(chunk, sections)
+		    
+		    # iterate through the list of speech and interjections.
+		    retval <- lapply(subchunks, function(x){
+		      y <- paragraphize(x = x, threshold = threshold)
+		      if (is.null(names(y))) names(y) <- rep("", times = length(y))
+		      y
+		    })
+		    names(retval) <- NULL
+		    return( unlist(retval) )
 		  }
 		  self$chunks <- lapply(self$chunks, .processor)
 		  invisible(self)
@@ -484,21 +486,17 @@ PlenaryProtocolParser <- R6Class(
 		  xml_add_child(newSpeakerNode, .value = "speaker", split[1])
 		  
 		  lapply(
-		    textParas,
-		    function(para){
-		      # the field $stage_regex is not necessarily defined
-		      if (!is.null(self$stage_regex)){
-		        stageRegexMatch <- sapply(self$stage_regex, function(regex) grepl(regex, para, perl = TRUE))
-		      } else {
-		        stageRegexMatch <- FALSE
-		      }
-		      
-		      if (any(stageRegexMatch)){
+		    1L:length(textParas),
+		    function(i){
+		      if (!is.null(names(textParas))){
 		        # add element for interjection, if respective regex matches
-		        stageType <- names(stageRegexMatch)[stageRegexMatch][1]
-		        xml_add_child(newSpeakerNode, .value = "stage", type = stageType, para)
+		        if (names(textParas)[i] != ""){
+		          xml_add_child(newSpeakerNode, .value = "stage", type = names(textParas)[i], textParas[i])
+		        } else {
+		          xml_add_child(newSpeakerNode, .value = "p", textParas[i])
+		        }
 		      } else {
-		        xml_add_child(newSpeakerNode, .value = "p", para)
+		        xml_add_child(newSpeakerNode, .value = "p", textParas[i])
 		      }
 		    }
 		  )
