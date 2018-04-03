@@ -90,7 +90,7 @@ Processing the document requires two steps. First, we have to configure the pars
 The field `$speakerRegex` supplies the information to detect speakers and to extract information that will go into XML attributes later on. It is a named list of lists that need to offer a regular expression (length 1 character vector), and a function that returns a named character vector with information that will be used to construct XML attributes for speakers later on.
 
 ```{r speaker_regex}
-PPP$speakerRegex <- list(
+PPP$speaker_regex <- list(
   
   pres = list(
     regex = "^(The\\s+President):\\s*(.+)$",
@@ -124,7 +124,7 @@ PPP$speakerRegex <- list(
 It is futile to seek for the regular expression that will always match perfectly. Sometimes, our regular expression will match unwantedly. A vector of speaker mismatches will be used to omit unwanted matches. In our case, we do not yet need that, however.
 
 ```{r}
-PPP$speakerMismatch <- character()
+PPP$speaker_mismatch <- character()
 ```
 
 
@@ -133,8 +133,8 @@ PPP$speakerMismatch <- character()
 Detecting calls to agenda items is optional.  The body of a document can also be created with `$makeBody(agendaItems = FALSE)`. For detecting agenda item calls, define the field _agendaItemRegex_ as a named character vector of (alternative) regular expressions that will match a call to an agenda item.
 
 ```{r agenda_item_regex}
-PPP$agendaItemRegex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
-PPP$agendaItemTypes <- c(any = "debate")
+PPP$agenda_item_regex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
+PPP$agenda_item_types <- c(any = "debate")
 ```
 
 
@@ -143,7 +143,7 @@ PPP$agendaItemTypes <- c(any = "debate")
 To mark-up stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the _type_ attribute of the _stage_ element surrounding what has been matched will be the name of the regular expression.
 
 ```{r stage_regex}
-PPP$stageRegex <- c(
+PPP$stage_regex <- c(
   end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
 )
 ```
@@ -156,7 +156,7 @@ We are now ready to parse our first plenary protocol. Once the parser has been i
 However, the parser requires the metadata of the document to generate a telling header. But its generic version does not have a method to extract the relevant information from the document. So we write a function that does this, based on the original pdf document.
 
 ```{r}
-getMetadata <- function(filename){
+get_metadata <- function(filename){
   pdfdoc <- pdftools::pdf_text(pdf = doc)
   page1 <- strsplit(pdfdoc, "\n")[[1]]
   
@@ -201,19 +201,19 @@ getMetadata <- function(filename){
 Note that the original pdf document is the basis for getting the metadata: The metadata is found in regions that we wanted to get rid to have the clean text body. 
 
 ```{r}
-metadata <- getMetadata(doc)
+metadata <- get_metadata(doc)
 ```
 
 Let's go. The first step is to read a file. We use the plain text file we used before. 
 
 ```{r read_file}
-PPP$readFile(filename = undoc_tmp, id = "A/71/PV.1")
+PPP$read_file(filename = undoc_tmp, id = "A/71/PV.1")
 ```
 
 Second. The initialized document includes some default metadata values: The birthday the document was parsed, the package used ("frappp") and the version of the package (see `PPP$metadata`). We add the metadata extracted before to these default metadata values. 
 
 ```{r}
-PPP$addMetadata(data = metadata)
+PPP$add_metadata(metadata = metadata)
 ```
 
 Third. We now generate the base TEI document by inserting the metadata into the TEI header. To do this, the parser uses the names of the character vector in the metadata to find matching XPath expressions in a character vector in the field xpath of the parser (`PPP$xpath`), using names. The respective XPath expression is used to find the correct place in the XML document for the piece of information of the metadata.
@@ -221,7 +221,7 @@ Third. We now generate the base TEI document by inserting the metadata into the 
 After running `$makeHeader()`, the field xml will contain the TEI document with the populated header (see `PPP$xml`, or `cat(as.character(PPP$xml))`).
 
 ```{r make_header}
-PPP$makeHeader()
+PPP$make_header()
 ```
 
 Third. The raw text (in the field `PPP$txt`) may include some noise. A pre-processing method (`$preprocessing()`) will remove empty lines, and leading and trailing whitespace. It takes as input a list `replacements`, a list of length 2 character vectors that serve as input to `gsub` (parameters pattern and x, respectively), to perform usual clean-ups.
@@ -233,7 +233,7 @@ PPP$preprocessing() # remove leading and trailing spaces
 Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
 
 ```{r make_body}
-PPP$splitBySpeakers()
+PPP$split_by_speakers()
 ```
 
 If you look at any of these chunks (e.g. `PPP$chunks[[2]]`), you will see that the text has been extracted nicely from the pdf document, but that paragraphs have been destroyed. 
@@ -241,7 +241,7 @@ If you look at any of these chunks (e.g. `PPP$chunks[[2]]`), you will see that t
 Fifth: We reconstruct the paragraphs!
 
 ```{r}
-PPP$reconstructParagraphs(exclude = "pres")
+PPP$reconstruct_paragraphs(exclude = "pres")
 ```
 
 See `PPP$chunks[[2]]` to see the result of this procedure. When reconstructing paragraphs, the heuristic is that lines are concatenated, when their length undercuts a standard length. To guess the number of characters per line that might be optimal, the method `$showNcharHistogram()` can be used.
@@ -249,13 +249,13 @@ See `PPP$chunks[[2]]` to see the result of this procedure. When reconstructing p
 Sixth. All preparatory steps have been performed. We now insert the speakers and the text of their speeches into the body of the XML document already present in the `$xml` field. 
 
 ```{r}
-PPP$makeBody(agendaItems = FALSE)
+PPP$make_body()
 ```
 
 That's it! The XML document is in the `$xml` field of our class. You can either look at it by typing `cat(as.character(PPP$xml))`, if by using the convenience of a browser that is called with the `$browseXML()` method.
 
 ```{r browse_xml}
-if (interactive()) PPP$browseXML()
+if (interactive()) PPP$browse_xml()
 ```
 
 To write the XML document to a file, you can use the following snippet. 
@@ -268,14 +268,14 @@ writeLines(text = as.character(PPP$xml), con = outfile)
 This has been the verbose version of parsing a protocol. In real life, you certainly want things to be more efficient. So note that the implementation of the PlenaryProtocolParser meets the requirements to use a technique called method chaining, which is very similar to the pipes more commonly known in R.
 
 ```{r}
-PPP$readFile(filename = undoc_tmp, id = "A/71/PV.1")$
-  addMetadata(data = getMetadata(doc))$
-  makeHeader()$
+PPP$read_file(filename = undoc_tmp, id = "A/71/PV.1")$
+  add_metadata(metadata = get_metadata(doc))$
+  make_header()$
   preprocessing()$
-  splitBySpeakers()$
-  reconstructParagraphs(exclude = "pres")$
-  makeBody(agendaItems = FALSE)$
-  saveXML(filename = tempfile())
+  split_by_speakers()$
+  reconstruct_paragraphs(exclude = "pres")$
+  make_body()$
+  save_xml(filename = tempfile())
 ```
 
 
@@ -291,7 +291,7 @@ The VerbatimRecordUNGA class we now define does not contain any code that you ha
 
 (a) It includes an `$initialize()` method that will supersede the respective method of the parent class. The idea is that upon initialization, the regular expressions we know to work (or assume to work) are assigned to the respective fields.
 
-(b) The `$getMetadata()` function we developed previously is now a method of the new class.
+(b) The `$get_metadata()` function we developed previously is now a method of the new class.
 
 (c) The class includes a `$xmlify()` method that takes the files needed as input (filenames of pdf, txt, xml files), and that will perform the succession of steps to prepare the XML document. 
 
@@ -310,7 +310,7 @@ VerbatimRecordUNGA <- R6Class(
       
       self$xpath = teiXpath
       
-      self$speakerRegex <- list(
+      self$speaker_regex <- list(
         pres = list(
           regex = "^(The\\s+President):\\s*(.+)$",
           fn = function(who, txt){
@@ -336,10 +336,10 @@ VerbatimRecordUNGA <- R6Class(
           }
         )
       )
-      self$speakerMismatch <- character()
-      self$agendaItemRegex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
-      self$agendaItemTypes <- c(any = "debate")
-      self$stageRegex <- c(
+      self$speaker_mismatch <- character()
+      self$agenda_item_regex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
+      self$agenda_item_types <- c(any = "debate")
+      self$stage_regex <- c(
         end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
       )
       
@@ -347,7 +347,7 @@ VerbatimRecordUNGA <- R6Class(
     },
     
     
-    getMetadata = function(filename){
+    get_metadata = function(filename){
       pdfdoc <- pdftools::pdf_text(pdf = doc)
       page1 <- strsplit(pdfdoc, "\n")[[1]]
       
@@ -390,23 +390,23 @@ VerbatimRecordUNGA <- R6Class(
 
     xmlify = function(id, txtfile, pdffile, xmlfile, verbose = TRUE){
       if (verbose) message("... getting metadata")
-      metadata <- self$getMetadata(pdffile)
+      metadata <- self$get_metadata(pdffile)
       if (verbose) message("... reading plain text file: ", txtfile)
-      self$readFile(filename = txtfile, id = id)
+      self$read_file(filename = txtfile, id = id)
       if (verbose) message("... adding metadata that has been extracted")
-      self$addMetadata(data = metadata)
+      self$add_metadata(metadata = metadata)
       if (verbose) message("... making header")
-      self$makeHeader()
+      self$make_header()
       if (verbose) message("... pre-processing plain text")
       self$preprocessing()
       if (verbose) message("... splitting up by speakers")
-      self$splitBySpeakers()
+      self$split_by_speakers()
       if (verbose) message("... reconstructing paragraphs")
-      self$reconstructParagraphs(exclude = "pres")
+      self$reconstruct_paragraphs(exclude = "pres")
       if (verbose) message("... making body")
-      self$makeBody(agendaItems = FALSE)
+      self$make_body()
       if (verbose) message("... saving TEI document to file: ", teifile)
-      self$saveXML(filename = xmlfile)
+      self$save_xml(filename = xmlfile)
       invisible(self$xml)
     }
   )

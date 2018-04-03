@@ -1,3 +1,12 @@
+v0.4.1
+======
+* new method $detect_stage_instructions
+* all methods have been renamed to snake_case
+* all params renamed to snake_case
+* params to methods moved to fields, to reduce necessity to document params
+* maxLengthWho argument replaced by field $speaker_maximum_nchar_name
+
+
 v0.4.0
 ======
 * birth given to frappp (a package formerly known as ctk.plpr)
