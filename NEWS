@@ -5,6 +5,7 @@ v0.4.1
 * all params renamed to snake_case
 * params to methods moved to fields, to reduce necessity to document params
 * maxLengthWho argument replaced by field $speaker_maximum_nchar_name
+* method $show_nchar_histogram() moved to auxiliary function hist_nchar()
 
 
 v0.4.0

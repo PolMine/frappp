@@ -59,6 +59,8 @@
 #' @field stage_regex a named vector of regular expressions to detect whether a
 #'   line is a stage instruction; when constructing the document, the name of
 #'   the matching regex will become the value of the 'type' attribute
+#' @field stage_match_n_lines number of lines to check whether regular
+#'   expression matches
 #' @field speaker_regex a named list of named lists that need to include a
 #'   regular expression to match a type of speaker (entry "regex") and a
 #'   function (entry "fn") that is passed into \code{strapply} (package
@@ -68,6 +70,8 @@
 #'   length, same names)
 #' @field speaker_mismatch a character vector of mismatches for speakers; the
 #'   matches for speakers on this list will not be annotated
+#' @field speaker_match_n_lines number of lines to check, whether one of the
+#'   regular expressions matches
 #' @field agenda_item_regex a named character vector of regular expressions to
 #'   detect calls to agenda items
 #' @field agenda_item_types a named character vector of keywords that may occurr
@@ -127,10 +131,6 @@
 #'   \item{\code{get_chunk_data()}}{extract speaker data by
 #'   applying regular expressions in $speaker_regex; the result is stored in the
 #'   field $chunk_data}
-#'   \item{\code{$detect_regex_matches(n = 2L)}}{Identify stage instructions (such as interjections etc.) by applying 
-#'   the regular expressions in the field \code{stageRegex}; to be able to cope with multiline stage
-#'   instructions, lines will be concatenated successively. If multiple regexes might match, only the 
-#'   first match will be found in the result. The same is true for the number of lines.}
 #'   \item{\code{$reconstruct_paragraphs(exclude = "pres")}}{This function
 #'   concatenates paragraphs that are splitted (i.e. the text does not end with
 #'   an interpuncutation) by applying a regex. It includes an exlude parameter:
@@ -197,10 +197,12 @@ PlenaryProtocolParser <- R6Class(
 		preprocessing_functions = NULL, # list
 		
 		stage_regex = NULL,
+		stage_match_n_lines = NULL,
 
 		speaker_regex = NULL, # list
 		speaker_mismatch = NULL, # character
 		speaker_maximum_nchar_name = NULL,
+		speaker_match_n_lines = NULL,
 		
 		agenda_item_regex = NULL, # list
 		agenda_item_types = NULL, # character
@@ -318,6 +320,25 @@ PlenaryProtocolParser <- R6Class(
 		  invisible(self)
 		},
 		
+		
+		detect_speaker_regex_matches = function(){
+		  self$txt <- paste_and_match(
+		    x = self$txt, regex = sapply(self$speaker_regex, function(x) x[["regex"]]),
+		    n_lines = if (is.null(self$speaker_match_n_lines)) 1L else self$speaker_match_n_lines,
+		    mismatch = self$speaker_mismatch
+		    )
+		},
+		
+		
+		detect_stage_regex_matches = function(){
+		  self$txt <- paste_and_match(
+		    x = self$txt, regex = self$stage_regex,
+		    n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
+		    mismatch = character()
+		  )
+		},
+		
+		
 		split_by_speakers = function(){
 		  
 		  # The first step is to get the indices of the vector where a call to a speaker occurs.
@@ -325,6 +346,7 @@ PlenaryProtocolParser <- R6Class(
 		  # index positions. Two checks are performed: (a) If the match for the name of the
 		  # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
 		  # included in the field 'speaker_mismatch' are discarded, too.
+		  
 		  
 		  self$get_chunk_data()
 		  
@@ -344,34 +366,7 @@ PlenaryProtocolParser <- R6Class(
 		  
 		  invisible(self)
 		},
-		
-		
-		detect_regex_matches = function(n = 2L){
-		  if (n <= 1L) stop("detect_regex_matches-method: n needs to be an integer value of 1 or higher")
-		  txt <- self$txt
-		  regex <- sapply(self$speaker_regex, function(x) x[["regex"]])
-		  names(regex) <- sprintf("[%s]", names(regex))
-		  regex <- c(regex, self$stage_regex)
-		  for (i in 1L:n){
-		    vecs <- sapply(1L:i, function(j) txt[j:(length(txt) - (i - j))])
-		    collapsed <- apply(vecs, 1, function(x) paste0(x, collapse = " "))
-		    for (regexID in 1L:length(regex)){
-		      matches <- grep(regex[regexID], collapsed)
-		      for (m in rev(matches)){
-		        if (all(names(txt)[m:(m + i - 1L)] == "")){
-		          txt[m] <- collapsed[m]
-		          names(txt)[m] <- names(regex)[regexID]
-		          if (i > 1L) txt <- txt[-((m + 1L):(m + i - 1L))] 
-		        }
-		      }
-		    }
-		  }
-		  names(txt)[grep("^\\[.*?\\]$", names(txt))] <- ""
-		  self$txt <- txt
-		  invisible(self)
-		},
-		
-		
+
 		reconstruct_paragraphs = function(exclude = "pres", threshold = 40){
 		  # The general scheme is that we iterate through the chunks. Thus there 
 		  # is a helper function '.chunkProcessor' to handle the individual chunks.
@@ -595,16 +590,7 @@ PlenaryProtocolParser <- R6Class(
 		  cat(doc, file = htmlfile)
 		  browseURL(htmlfile)
 		},
-		
-		show_nchar_histogram = function(){
-		  hist(
-		    x = nchar(self$txt), las = 2, breaks = 1:max(nchar(self$txt)),
-		    main = "number of characters in lines",
-		    xlab = "nchar"
-		    )
-		},
-		
-		
+
 		regex_context_in_chunks = function(regex, nchar_context = 100, verbose = FALSE){
 		  
 		  self$preprocessing() # remove leading and and trailing spaces
