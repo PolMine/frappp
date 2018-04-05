@@ -230,19 +230,22 @@ Third. The raw text (in the field `PPP$txt`) may include some noise. A pre-proce
 PPP$preprocessing() # remove leading and trailing spaces
 ```
 
-Fourth. Let us detect stage instructions, such as interjections.
 
-```{r stage_instructions}
-PPP$detect_regex_matches(n = 2L)
-```
-
-Fifth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
+Fourth. The essential feature of a plenary protocol is that it reports speech attributed to speakers. Indicating who is speaking is the organising principle of a protocol. So we use the regular expressions in the field `PPP$speakerRegex` to split up the (pre-processed) plain text into chunks of speech that will be kept (as a list) in the field `$chunks`.
 
 ```{r make_body}
 PPP$split_by_speakers()
 ```
 
 If you look at any of these chunks (e.g. `PPP$chunks[[2]]`), you will see that the text has been extracted nicely from the pdf document, but that paragraphs have been destroyed. 
+
+Fifth. Let us detect stage instructions, such as interjections.
+
+```{r stage_instructions}
+PPP$stage_match_n_lines <- 2L
+PPP$detect_stage_regex_matches()
+```
+
 
 Sixth: We reconstruct the paragraphs!
 

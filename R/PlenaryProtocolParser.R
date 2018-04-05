@@ -327,15 +327,22 @@ PlenaryProtocolParser <- R6Class(
 		    n_lines = if (is.null(self$speaker_match_n_lines)) 1L else self$speaker_match_n_lines,
 		    mismatch = self$speaker_mismatch
 		    )
+		  invisible(self)
 		},
 		
 		
 		detect_stage_regex_matches = function(){
-		  self$txt <- paste_and_match(
-		    x = self$txt, regex = self$stage_regex,
-		    n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
-		    mismatch = character()
+		  self$chunks <- lapply(
+		    self$chunks,
+		    function(chunk){
+		      paste_and_match(
+		        x = chunk, regex = self$stage_regex,
+		        n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
+		        mismatch = character()
+		      )
+		    }
 		  )
+		  invisible(self)
 		},
 		
 		
@@ -348,6 +355,8 @@ PlenaryProtocolParser <- R6Class(
 		  # included in the field 'speaker_mismatch' are discarded, too.
 		  
 		  
+		  self$detect_speaker_regex_matches()
+		  names(self$txt) <- rep("", times = length(self$txt))
 		  self$get_chunk_data()
 		  
 

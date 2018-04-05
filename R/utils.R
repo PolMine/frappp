@@ -50,6 +50,7 @@ paragraphize <- function(x, threshold = 40){
 #' @param n_lines integer, maximum number of lines to match
 #' @param mismatch a character vector, regex matches included in this vector
 #'   will be discarded (using \code{grepl})
+#' @export paste_and_match
 #' @examples
 #' x <- c(
 #'   "(The audience", "is listening)",
@@ -64,12 +65,22 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
   if (is.null(names(x))) names(x) <- rep("", times = length(x))
   if (!is.character(regex)) stop("regex needs to be a character vector")
   if (is.null(names(regex))) stop("regex character vector needs to be named")
-  if (n_lines <= 1L) stop("detect_regex_matches-method: n needs to be an integer value of 1 or higher")
+  if (n_lines < 1L) stop("n_lines needs to be an integer value of 1 or higher")
+  if (length(x) < n_lines) n_lines <- length(x)
   if (!is.character(mismatch)) stop("mismatch needs to be a character vector")
   
   for (i in 1L:n_lines){
-    vecs <- sapply(1L:i, function(j) x[j:(length(x) - (i - j))])
-    collapsed <- apply(vecs, 1, function(v) paste0(v, collapse = " "))
+    if (i == 1L){
+      collapsed <- x
+    } else {
+      if (length(x) > 1L){
+        vecs <- sapply(1L:i, function(j) x[j:(length(x) - (i - j))])
+        if (is.character(vecs)) vecs <- matrix(data = vecs, nrow = 1)
+        collapsed <- apply(vecs, 1, function(v) paste0(v, collapse = " "))
+      } else {
+        collapsed <- x
+      }
+    }
     for (regexID in 1L:length(regex)){
       matches <- grep(regex[regexID], collapsed)
       for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches])]
@@ -98,5 +109,5 @@ hist_nchar <- function(x){
     main = "Number of Characters",
     xlab = "nchar"
   )
-},
+}
 
