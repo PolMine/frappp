@@ -308,6 +308,8 @@ PlenaryProtocolParser <- R6Class(
 		  if (length(checkedMatches) != nrow(matchTable)) matchTable <- matchTable[checkedMatches,]
 		  
 		  matchTable <- matchTable[order(matchTable[["index"]]),]
+		  
+		  # remove multiple matches for regexes
 		  self$chunk_data <- plyr::ddply(.data = matchTable, .variables = "index", .fun = function(df){
 		    if (nrow(df) > 1){
 		      firstRegexMatched <- names(self$speaker_regex)[which(names(self$speaker_regex) %in% df[["regex"]])][1]

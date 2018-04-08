@@ -1,0 +1,103 @@
+---
+title: "YOUR PROJECT"
+author: "YOUR NAME"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{TITLE}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+## A workflow to generate XML
+
+```{r load_frap}
+required_package_version <- "0.4.1"
+if (packageVersion("frappp") < as.package_version(required_package_version))
+  stop("version requirement not met")
+```
+
+```{r load_frap}
+library(frappp)
+packageVersion("frappp")
+```
+
+
+## Configure the parser
+
+
+```{r}
+PPP <- PlenaryProtocolParser$new()
+```
+
+
+```{r speaker_regex}
+PPP$speaker_regex <- list()
+PPP$speaker_mismatch <- character()
+```
+
+
+```{r agenda_item_regex}
+PPP$agenda_item_regex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
+PPP$agenda_item_types <- c(any = "debate")
+```
+
+
+
+```{r stage_regex}
+PPP$stage_regex <- c()
+PPP$stage_match_n_lines <- 2L
+```
+
+
+
+Note that the original pdf document is the basis for getting the metadata: The metadata is found in regions that we wanted to get rid to have the clean text body. 
+
+```{r}
+metadata <- get_metadata(doc)
+```
+
+Let's go. The first step is to read a file. We use the plain text file we used before. 
+
+```{r read_file}
+PPP$read_file(filename = XXX, id = "SETID")
+```
+
+
+```{r}
+PPP$add_metadata(metadata = metadata)
+PPP$make_header()
+PPP$preprocessing() # remove leading and trailing spaces
+PPP$split_by_speakers()
+PPP$detect_stage_regex_matches()
+PPP$reconstruct_paragraphs(exclude = "pres")
+PPP$make_body()
+if (interactive()) PPP$browse_xml()
+outfile <- tempfile()
+writeLines(text = as.character(PPP$xml), con = outfile)
+```
+
+
+
+```{r processing_multiple_docs, message = FALSE}
+pdfdir <- tempdir()
+txtdir <- tempdir()
+xmldir <- tempdir()
+txtFilesToProcess <- Sys.glob(paths = sprintf("%s/*.txt", txtdir))
+
+UNGAParser <- VerbatimRecordUNGA$new()
+
+lapply(
+  txtFilesToProcess,
+  function(txtfile){
+    UNGAParser$xmlify(
+      id = basename(txtfile),
+      txtfile = txtfile,
+      pdffile = file.path(pdfdir, gsub("^(.*?)\\.txt$", "\\1.pdf", basename(txtfile))),
+      xmlfile = file.path(pdfdir, gsub("^(.*?)\\.txt$", "\\1.xml", basename(txtfile)))
+    )
+    return(TRUE)
+  })
+```

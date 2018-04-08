@@ -82,8 +82,8 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
       }
     }
     for (regexID in 1L:length(regex)){
-      matches <- grep(regex[regexID], collapsed)
-      for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches])]
+      matches <- grep(regex[regexID], collapsed, perl = TRUE)
+      for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)]
       for (m in rev(matches)){
         if (all(names(x)[m:(m + i - 1L)] == "")){
           x[m] <- collapsed[m]
