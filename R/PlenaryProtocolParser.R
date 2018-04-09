@@ -173,7 +173,8 @@
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
 #' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child xml_find_all xml_name xml_children
-#' @importFrom gsubfn strapply strapplyc
+#' @importFrom gsubfn strapplyc
+#' @importFrom stringi stri_match_all_regex
 #' @importFrom R6 R6Class
 #' @importFrom markdown markdownToHTML
 PlenaryProtocolParser <- R6Class(
@@ -277,43 +278,38 @@ PlenaryProtocolParser <- R6Class(
 		},
 		
 		get_chunk_data = function(){
-		  matchTables <- lapply(
+		  match_tables <- lapply(
 		    names(self$speaker_regex),
-		    function(speakerRegexType) {
-		      matchList <- strapply(
-		        self$txt,
-		        pattern = self$speaker_regex[[speakerRegexType]][["regex"]],
-		        FUN = self$speaker_regex[[speakerRegexType]][["fn"]],
-		        perl = TRUE
+		    function(speaker_regex_type) {
+		      matches <- stri_match_all_regex(
+		        str = self$txt,
+		        pattern = self$speaker_regex[[speaker_regex_type]][["regex"]]
 		      )
-		      if (all(sapply(matchList, is.null))) return(NULL)
-		      names(matchList) <- as.character(1:length(matchList))
-		      matchMatrix <- do.call(rbind, matchList)
-		      matchDf <- data.frame(
-		        regex = speakerRegexType,
-		        index = as.integer(rownames(matchMatrix)),
-		        matchMatrix,
-		        stringsAsFactors = FALSE
-		      )
-		      if (!is.null(self$speaker_maximum_nchar_name)){
-		        matchDf <- matchDf[which(nchar(matchDf[,"who"]) <= self$speaker_maximum_nchar_name),]
+		      df <- data.frame(do.call(rbind, matches), index = 1L:length(matches), stringsAsFactors = FALSE)
+		      df2 <- df[!is.na(df[,1]),]
+		      match_df <- self$speaker_regex[[speaker_regex_type]][["fn"]](df2)
+		      match_df[["index"]] <- df2[["index"]]
+		      match_df[["regex"]] <- speaker_regex_type
+
+		      if (is.numeric(self$speaker_maximum_nchar_name)){
+		        match_df <- match_df[which(nchar(match_df[,"who"]) <= self$speaker_maximum_nchar_name),]
 		      }
 		      
-		      matchDf
+		      match_df
 		    }
 		  )
-		  matchTable <- do.call(rbind, matchTables)
+		  match_table <- do.call(rbind, match_tables)
 		  
-		  checkedMatches <- which(!matchTable[["who"]] %in% self$speaker_mismatch)
-		  if (length(checkedMatches) != nrow(matchTable)) matchTable <- matchTable[checkedMatches,]
+		  checked_matches <- which(!match_table[["who"]] %in% self$speaker_mismatch)
+		  if (length(checked_matches) != nrow(match_table)) match_table <- match_table[checked_matches,]
 		  
-		  matchTable <- matchTable[order(matchTable[["index"]]),]
+		  match_table <- match_table[order(match_table[["index"]]),]
 		  
 		  # remove multiple matches for regexes
-		  self$chunk_data <- plyr::ddply(.data = matchTable, .variables = "index", .fun = function(df){
+		  self$chunk_data <- plyr::ddply(.data = match_table, .variables = "index", .fun = function(df){
 		    if (nrow(df) > 1){
-		      firstRegexMatched <- names(self$speaker_regex)[which(names(self$speaker_regex) %in% df[["regex"]])][1]
-		      df <- df[which(df[["regex"]] == firstRegexMatched),]
+		      first_regex_matched <- names(self$speaker_regex)[which(names(self$speaker_regex) %in% df[["regex"]])][1]
+		      df <- df[which(df[["regex"]] == first_regex_matched),]
 		      return(df[1,])
 		    } else {
 		      return(df)

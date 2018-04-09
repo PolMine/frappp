@@ -92,32 +92,33 @@ The field `$speakerRegex` supplies the information to detect speakers and to ext
 ```{r speaker_regex}
 PPP$speaker_regex <- list(
   
-  pres = list(
-    regex = "^(The\\s+President):\\s*(.+)$",
-    fn = function(who, txt){
-      c(
-        who = who,
-        state = "NA",
-        role = "presidency",
-        position = "presidency",
-        text = txt
-      )
-    }
-  ),
-  
-  sg = list(
-    regex = "^(The\\sSecretary-General):\\s*(.+)$",
-    fn = function(who, txt){
-      c(
-        who = who,
-        state = "NA",
-        role = "secretary-general",
-        position = "secretary-general",
-        text = txt
-      )
-    }
-  )
-  
+    pres = list(
+      regex = "^(The\\s+President):\\s*(.+)$",
+      fn = function(df){
+        data.frame(
+          who = df[,2],
+          state = "NA",
+          role = "presidency",
+          position = "presidency",
+          text = df[,3],
+          stringsAsFactors = FALSE
+        )
+      }
+    ),
+    sg = list(
+      regex = "^(The\\sSecretary-General):\\s*(.+)$",
+      fn = function(df){
+        data.frame(
+          who = df[,2],
+          state = "NA",
+          role = "secretary-general",
+          position = "secretary-general",
+          text = df[,3],
+          stringsAsFactors = FALSE
+        )
+      }
+    )
+
 )
 ```
 
@@ -281,8 +282,8 @@ PPP$read_file(filename = undoc_tmp, id = "A/71/PV.1")$
   add_metadata(metadata = get_metadata(doc))$
   make_header()$
   preprocessing()$
-  detect_regex_matches(n = 2L)$
   split_by_speakers()$
+  detect_stage_regex_matches()$
   reconstruct_paragraphs(exclude = "pres")$
   make_body()$
   save_xml(filename = tempfile())
@@ -323,25 +324,27 @@ VerbatimRecordUNGA <- R6Class(
       self$speaker_regex <- list(
         pres = list(
           regex = "^(The\\s+President):\\s*(.+)$",
-          fn = function(who, txt){
-            c(
-              who = who,
+          fn = function(df){
+            data.frame(
+              who = df[,2],
               state = "NA",
               role = "presidency",
               position = "presidency",
-              text = txt
+              text = df[,3],
+              stringsAsFactors = FALSE
             )
           }
         ),
         sg = list(
           regex = "^(The\\sSecretary-General):\\s*(.+)$",
-          fn = function(who, txt){
-            c(
-              who = who,
+          fn = function(df){
+            data.frame(
+              who = df[,2],
               state = "NA",
               role = "secretary-general",
               position = "secretary-general",
-              text = txt
+              text = df[,3],
+              stringsAsFactors = FALSE
             )
           }
         )
@@ -409,10 +412,10 @@ VerbatimRecordUNGA <- R6Class(
       self$make_header()
       if (verbose) message("... pre-processing plain text")
       self$preprocessing()
-      if (verbose) message("... detecting stage instructions")
-      self$detect_regex_matches()
       if (verbose) message("... splitting up by speakers")
       self$split_by_speakers()
+      if (verbose) message("... detecting stage instructions")
+      self$detect_stage_regex_matches()
       if (verbose) message("... reconstructing paragraphs")
       self$reconstruct_paragraphs(exclude = "pres")
       if (verbose) message("... making body")

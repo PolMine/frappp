@@ -48,6 +48,9 @@ functions}
 line is a stage instruction; when constructing the document, the name of
 the matching regex will become the value of the 'type' attribute}
 
+\item{\code{stage_match_n_lines}}{number of lines to check whether regular
+expression matches}
+
 \item{\code{speaker_regex}}{a named list of named lists that need to include a
 regular expression to match a type of speaker (entry "regex") and a
 function (entry "fn") that is passed into \code{strapply} (package
@@ -58,6 +61,9 @@ length, same names)}
 
 \item{\code{speaker_mismatch}}{a character vector of mismatches for speakers; the
 matches for speakers on this list will not be annotated}
+
+\item{\code{speaker_match_n_lines}}{number of lines to check, whether one of the
+regular expressions matches}
 
 \item{\code{agenda_item_regex}}{a named character vector of regular expressions to
 detect calls to agenda items}
@@ -131,10 +137,6 @@ PPP <- PlenaryProtocolParser$new()
   \item{\code{get_chunk_data()}}{extract speaker data by
   applying regular expressions in $speaker_regex; the result is stored in the
   field $chunk_data}
-  \item{\code{$detect_regex_matches(n = 2L)}}{Identify stage instructions (such as interjections etc.) by applying 
-  the regular expressions in the field \code{stageRegex}; to be able to cope with multiline stage
-  instructions, lines will be concatenated successively. If multiple regexes might match, only the 
-  first match will be found in the result. The same is true for the number of lines.}
   \item{\code{$reconstruct_paragraphs(exclude = "pres")}}{This function
   concatenates paragraphs that are splitted (i.e. the text does not end with
   an interpuncutation) by applying a regex. It includes an exlude parameter:
