@@ -75,7 +75,7 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
     } else {
       if (length(x) > 1L){
         vecs <- sapply(1L:i, function(j) x[j:(length(x) - (i - j))])
-        if (is.character(vecs)) vecs <- matrix(data = vecs, nrow = 1)
+        if (!is.matrix(vecs)) vecs <- matrix(data = vecs, nrow = 1)
         collapsed <- apply(vecs, 1, function(v) paste0(v, collapse = " "))
       } else {
         collapsed <- x
