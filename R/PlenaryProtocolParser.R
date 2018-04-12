@@ -287,6 +287,7 @@ PlenaryProtocolParser <- R6Class(
 		      )
 		      df <- data.frame(do.call(rbind, matches), index = 1L:length(matches), stringsAsFactors = FALSE)
 		      df2 <- df[!is.na(df[,1]),]
+		      if (nrow(df2) > 0) {
 		      match_df <- self$speaker_regex[[speaker_regex_type]][["fn"]](df2)
 		      match_df[["index"]] <- df2[["index"]]
 		      match_df[["regex"]] <- speaker_regex_type
@@ -296,14 +297,21 @@ PlenaryProtocolParser <- R6Class(
 		      }
 		      
 		      match_df
+		      }
 		    }
 		  )
 		  match_table <- do.call(rbind, match_tables)
 		  
+		 # if (is.data.frame(match_table) && nrow(match_table) > 0) {
 		  checked_matches <- which(!match_table[["who"]] %in% self$speaker_mismatch)
 		  if (length(checked_matches) != nrow(match_table)) match_table <- match_table[checked_matches,]
 		  
 		  match_table <- match_table[order(match_table[["index"]]),]
+		
+		#} else { 
+		#  stop("no speakers found")
+		#}
+		
 		  
 		  # remove multiple matches for regexes
 		  self$chunk_data <- plyr::ddply(.data = match_table, .variables = "index", .fun = function(df){
