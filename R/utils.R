@@ -28,7 +28,7 @@ paragraphize <- function(x, threshold = 40){
   # assume that a new paragraph begins, if a line ends with a
   # punctuation mark, and if the length of the line undercuts a
   # certain threshold (hardcoded, 40).
-  shortLines <- which(nchar(x2) < threshold)
+  shortLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
   x2[shortLines] <- sprintf("%s<linebreak/>", x2[shortLines])
   
   # Paste everything, and break it up again
