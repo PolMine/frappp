@@ -1,3 +1,9 @@
+v0.4.1.9001
+===========
+* data.frame with regex matches needs to be modified such that it does not break if no matches
+* precautionary check in $make_body() to avoid empty paragraphs
+* dependency on gsubfn (function strapplyc) has been dropped
+
 v0.4.1
 ======
 * new method $detect_stage_instructions

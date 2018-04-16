@@ -173,7 +173,6 @@
 #' @importFrom stringi stri_locate_all_regex
 #' @aliases agendaItemTypes teiXpath
 #' @importFrom xml2 read_xml xml_find_first xml_text<- xml_text xml_attrs xml_attrs<- xml_add_child xml_find_all xml_name xml_children
-#' @importFrom gsubfn strapplyc
 #' @importFrom stringi stri_match_all_regex
 #' @importFrom R6 R6Class
 #' @importFrom markdown markdownToHTML
@@ -472,9 +471,10 @@ PlenaryProtocolParser <- R6Class(
 		
 		
 		make_speaker_node = function(chunk_no, parent){
-		  textParas <- self$chunks[[chunk_no]]
+		  lines <- self$chunks[[chunk_no]]
 		  # remove empty lines, if necessary
-		  if (length(grep("^\\s*$", textParas)) > 0) textParas <- textParas[-grep("^\\s*$", textParas)]  
+		  empty_lines <- grep("^\\s*$", lines)
+		  if (length(empty_lines) > 0) lines <- lines[-empty_lines]  
 		  
 		  type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunk_no]])
 		  
@@ -484,25 +484,25 @@ PlenaryProtocolParser <- R6Class(
 		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "text")]
 		  Encoding(speakerAttrs) <- "UTF-8" # just to be sure
 		  
-		  split <- strapplyc(textParas[1], "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
-		  textParas[1] <- split[2]
+		  split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
+		  lines[1] <- split[1,3]
 
 		  newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
 		  xml_attrs(newSpeakerNode) <- speakerAttrs
-		  xml_add_child(newSpeakerNode, .value = "speaker", split[1])
+		  xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
 		  
 		  lapply(
-		    1L:length(textParas),
+		    1L:length(lines),
 		    function(i){
-		      if (!is.null(names(textParas))){
+		      if (!is.null(names(lines))){
 		        # add element for interjection, if respective regex matches
-		        if (names(textParas)[i] != ""){
-		          xml_add_child(newSpeakerNode, .value = "stage", type = names(textParas)[i], textParas[i])
-		        } else {
-		          xml_add_child(newSpeakerNode, .value = "p", textParas[i])
+		        if (names(lines)[i] != ""){
+		          xml_add_child(newSpeakerNode, .value = "stage", type = names(lines)[i], lines[i])
+		        } else if (lines[i] != ""){
+		          xml_add_child(newSpeakerNode, .value = "p", lines[i])
 		        }
 		      } else {
-		        xml_add_child(newSpeakerNode, .value = "p", textParas[i])
+		        if (lines[i] != "") xml_add_child(newSpeakerNode, .value = "p", lines[i])
 		      }
 		    }
 		  )
