@@ -363,19 +363,23 @@ PlenaryProtocolParser <- R6Class(
 		  self$get_chunk_data()
 		  
 
-		  # Intermediate step: We now turn the list of starting paragraphs into a
-		  # oredered, named character vector.
-		  startParas <- self$chunk_data[["index"]]
-		  if (startParas[length(startParas)] != length(self$txt)){
-		    startParas <- c(startParas, length(self$txt))
+		  # Intermediate step: We get the indices with the start paragraphs from the
+		  # data.frame in chunk_data. We ensure that the last element of the vector
+		  # is the last line in self$txt
+		  start_paras <- self$chunk_data[["index"]]
+		  if (start_paras[length(start_paras)] != length(self$txt)){
+		    start_paras <- c(start_paras, length(self$txt))
 		  }
 		  
 		  # Finally, the raw character vector is chunked, i.e. it is turned into a list
 		  # with sections of speech of one speaker that has been identified.
-		  parasSpeechesFactor <- cut(1:length(self$txt), breaks = startParas, include.lowest = TRUE, right = FALSE)
-		  self$chunks <- split(self$txt, parasSpeechesFactor)
-		  names(self$chunks) <- names(startParas)[1:length(self$chunks)]
-		  
+		  paras_speeches_factor <- cut(
+		    1L:length(self$txt), breaks = start_paras,
+		    include.lowest = TRUE, right = FALSE
+		    )
+		  self$chunks <- split(self$txt, paras_speeches_factor)
+		  names(self$chunks) <- self$chunk_data[["regex"]][1L:length(self$chunks)]
+	
 		  invisible(self)
 		},
 
@@ -411,56 +415,55 @@ PlenaryProtocolParser <- R6Class(
 		
 		get_agenda_item_calls = function(){
 		  
-		  chunkTypes <- gsub("(.*?)\\d+", "\\1", names(self$chunks))
-		  chunksToConsider <- which(chunkTypes == "pres")
+		  chunks_pres <- which(names(self$chunks) == "pres")
 
 		  matchesForTopicCall <- lapply(
 		    
-		    chunksToConsider,
+		    chunks_pres,
 		    
 		    function(i){
 		      chunk <- self$chunks[[i]]
 		      
 		      # get the lines where one of agenda item regexes matches
-		      matchAgendaItemCall <- unique(unlist(lapply(self$agenda_item_regex, function(regex) grep(regex, chunk))))
-		      if (length(matchAgendaItemCall) == 0) return( NULL )
+		      match_agenda_item_call <- unique(unlist(lapply(self$agenda_item_regex, function(regex) grep(regex, chunk))))
+		      if (length(match_agenda_item_call) == 0) return( NULL )
 		      
 		      # remove the matching lines that are known to be mismatches
 		      mismatches <- self$agenda_item_mismatch[[self$filename]]
 		      if (!is.null(mismatches)){
-		        agendaItemMismatchPosition <- unique(unlist(
-		          lapply(mismatches, function(mismatch) grep(mismatch, chunk)
-		          )))
-		        if (length(agendaItemMismatchPosition) > 0) matchAgendaItemCall <- matchAgendaItemCall[-agendaItemMismatchPosition]
+		        agenda_item_mismatch_position <- unique(unlist(lapply(mismatches, function(mismatch) grep(mismatch, chunk))))
+		        if (length(agenda_item_mismatch_position) > 0){
+		          match_agenda_item_call <- match_agenda_item_call[-which(match_agenda_item_call == agenda_item_mismatch_position)]
+		        }
 		      }
-		      if (length(matchAgendaItemCall) == 0) return( NULL ) # stop things if nothing left
+		      if (length(match_agenda_item_call) == 0) return( NULL ) # stop things if nothing left
 		      
-		      matchPosition <- max(matchAgendaItemCall) # apply only last call of an agenda item
-		      if (matchPosition > length(chunk)) return( NULL ) # no idea how it can happen, but it happened 
+		      match_position <- max(match_agenda_item_call) # apply only last call of an agenda item
+		      if (match_position > length(chunk)) return( NULL ) # no idea how it can happen, but it happened 
 		      
 		      # which of the regexes did the hit?
-		      matchRegexLogical <- sapply(self$agenda_item_regex, function(regex) grepl(regex, chunk[matchPosition]))
-		      regexName <- names(matchRegexLogical)[which(matchRegexLogical == TRUE)]
+		      match_regex_logical <- sapply(self$agenda_item_regex, function(regex) grepl(regex, chunk[match_position]))
+		      regex_name <- names(match_regex_logical)[which(match_regex_logical == TRUE)]
 		      
-		      if (any(regexName != "any")){
-		        agendaItemType <- regexName[which(regexName != "any")][1]
-		        agendaItemDesc <- unname(self$agenda_item_types[agendaItemType])
-		      } else if (matchPosition < length(chunk)){
-		        agendaItemTitle <- chunk[matchPosition + 1]
-		        agendaItemTypeMatch <- sapply(self$agenda_item_types, function(regex) grepl(regex, agendaItemTitle))
-		        agendaItemType <- paste(names(agendaItemTypeMatch[which(agendaItemTypeMatch == TRUE)]), collapse = "|")   
+		      if (any(regex_name != "any")){
+		        agenda_item_type <- regex_name[which(regex_name != "any")][1]
+		        agenda_item_desc <- unname(self$agenda_item_types[agenda_item_type])
+		      } else {
+		        agenda_item_title <- if (match_position < length(chunk)) chunk[match_position + 1] else agenda_item_title <- chunk[match_position]
+		        agenda_item_type_match <- sapply(self$agenda_item_types, function(regex) grepl(regex, agenda_item_title))
+		        agenda_item_type <- paste(names(agenda_item_type_match[which(agenda_item_type_match == TRUE)]), collapse = "|")   
 		        if (!is.null(self$agenda_item_maximum_nchar_desc)){
-		          agendaItemDesc <- if (nchar(agendaItemTitle) > self$agenda_item_maximum_nchar_desc){
-		            paste(substr(agendaItemTitle, 1, self$agenda_item_maximum_nchar_desc), "...", sep = " ")
+		          agenda_item_desc <- if (nchar(agenda_item_title) > self$agenda_item_maximum_nchar_desc){
+		            paste(substr(agenda_item_title, 1, self$agenda_item_maximum_nchar_desc), "...", sep = " ")
 		          } else {
-		            agendaItemTitle
+		            agenda_item_title
 		          }
 		        } else {
-		          agendaItemDesc <- agendaItemTitle
+		          agenda_item_desc <- agenda_item_title
 		        }
 		      }
 		      data.frame(
-		        chunk = i, position = matchPosition, type = agendaItemType, desc = agendaItemDesc,
+		        chunk = i, position = match_position, type = agenda_item_type, desc = agenda_item_desc,
 		        stringsAsFactors = FALSE
 		        )
 		    }
