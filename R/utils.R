@@ -70,18 +70,18 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
   if (!is.character(mismatch)) stop("mismatch needs to be a character vector")
   
   for (i in 1L:n_lines){
-    if (i == 1L){
-      collapsed <- x
-    } else {
-      if (length(x) > 1L){
-        vecs <- sapply(1L:i, function(j) x[j:(length(x) - (i - j))])
-        if (!is.matrix(vecs)) vecs <- matrix(data = vecs, nrow = 1)
-        collapsed <- apply(vecs, 1, function(v) paste0(v, collapse = " "))
-      } else {
-        collapsed <- x
-      }
-    }
     for (regexID in 1L:length(regex)){
+      if (i == 1L){
+        collapsed <- x
+      } else {
+        if (length(x) > 1L){
+          vecs <- sapply(1L:i, function(j) x[j:(length(x) - (i - j))])
+          if (!is.matrix(vecs)) vecs <- matrix(data = vecs, nrow = 1)
+          collapsed <- apply(vecs, 1, function(v) paste0(v, collapse = " "))
+        } else {
+          collapsed <- x
+        }
+      }
       matches <- grep(regex[regexID], collapsed, perl = TRUE)
       for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)]
       for (m in rev(matches)){
