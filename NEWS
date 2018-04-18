@@ -1,3 +1,7 @@
+v0.4.1.9003
+===========
+* bug removed that occurred when concatenating multiple lines to match regex
+
 v0.4.1.9001
 ===========
 * data.frame with regex matches needs to be modified such that it does not break if no matches
