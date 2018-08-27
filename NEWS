@@ -1,3 +1,11 @@
+v0.4.1.9004
+===========
+* Changes for a robust procedure when chunks are derived from XML
+* When creating speaker attributes, regex/indext/text are dropped from attributes only if present; respective
+check introduced in PlenaryProtocolParser$make_speaker_node()
+* Speaker call is not necessarily there in chunk lines - respective check included.
+* bug removed in PlenaryProtocolParser$save_xml() that would prevent it from working.
+
 v0.4.1.9003
 ===========
 * bug removed that occurred when concatenating multiple lines to match regex

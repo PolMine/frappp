@@ -482,17 +482,20 @@ PlenaryProtocolParser <- R6Class(
 		  type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunk_no]])
 		  
 		  speakerAttrs <- unlist(self$chunk_data[chunk_no,])
-		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "regex")]
-		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "index")]
-		  speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "text")]
+		  if ("regex" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "regex")]
+		  if ("index" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "index")]
+		  if ("text" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "text")]
 		  Encoding(speakerAttrs) <- "UTF-8" # just to be sure
 		  
-		  split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
-		  lines[1] <- split[1,3]
-
 		  newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
 		  xml_attrs(newSpeakerNode) <- speakerAttrs
-		  xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
+
+		  # The speaker call is not necessarily present (e.g. when chunks are extracted from XML)
+		  if (grepl(":", lines[1])){
+		    split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
+		    lines[1] <- split[1,3]
+		    xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
+		  }
 		  
 		  lapply(
 		    1L:length(lines),
@@ -589,7 +592,7 @@ PlenaryProtocolParser <- R6Class(
 		},
 		
 		save_xml = function(filename){
-		  writeLines(text = as.character(PPP$xml), con = filename)
+		  writeLines(text = as.character(self$xml), con = filename)
 		},
 		
 		browse_txt = function(){
