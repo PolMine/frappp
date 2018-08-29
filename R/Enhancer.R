@@ -8,7 +8,7 @@
 #'   Upon initialization, the \code{getSpeakerData}-method will be called to read in the content of
 #'   the datafiles, and the aliasfile is parsed.}
 #'   \item{\code{$getSpeakerData(datafiles, verbose = FALSE)}}{Read in tables defined by datafiles,
-#'   thereby filling field speakerdata.}
+#'   thereby filling field speakerdata. Self is returned invisibly.}
 #'   \item{\code{$getSpeakerAttributes(element = "sp", attrs = c("who", "role"), verbose = TRUE)}}{
 #'   Iteratre through files in sourceDir, and extract information about speakers from XML files.
 #'   The result is kept in the field speakerattributes.}
@@ -50,7 +50,7 @@ Enhancer <- R6Class(
     },
     
     getSpeakerData = function(datafiles, verbose = FALSE){
-      speakerData <- lapply(
+      speaker_data_list <- lapply(
         names(datafiles),
         function(x) {
           if (verbose) message("... reading: ", datafiles[x])
@@ -61,8 +61,8 @@ Enhancer <- R6Class(
           DT
         }
       )
-      self$speakerdata <- rbindlist(speakerData)
-      invisible(self$speakerdata)
+      self$speakerdata <- rbindlist(speaker_data_list)
+      invisible(self)
     },
     
     getSpeakerAttributes = function(element = "sp", attrs = c("who", "role"), verbose = TRUE){
@@ -89,8 +89,9 @@ Enhancer <- R6Class(
       dataSubset <- self$speakerdata[role == .BY[["role"]]][lp == .BY[["lp"]]]
       who <- self$stripTitlesFromName(.BY[["who"]])
       who <- gsub("\\s+", " ", who)
+      if (grepl("\\s*\\(.*?\\)\\s*$", who)) who <- gsub("\\s*\\(.*?\\)\\s*$", "", who)
       hasAlias <- who %in% names(self$aliases)
-      if (any(grepl(who, dataSubset[["name"]])) == TRUE){
+      if (any(grepl(who, dataSubset[["name"]]))){
         index <- grep(who, dataSubset[["name"]])
       } else if (hasAlias == TRUE && any(grepl(self$aliases[[who]], dataSubset[["name"]])) == TRUE){
         index <- grep(self$aliases[[who]], dataSubset[["name"]])

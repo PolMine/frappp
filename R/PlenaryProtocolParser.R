@@ -61,6 +61,9 @@
 #'   the matching regex will become the value of the 'type' attribute
 #' @field stage_match_n_lines number of lines to check whether regular
 #'   expression matches
+#' @field stage_mismatch_regex A regular expression that is passed into
+#'   \code{paste_and_match} to avoid annotating an interjection call if the 
+#'   match for \code{stage_regex} matches \code{stage_mismatch_regex}.
 #' @field speaker_regex a named list of named lists that need to include a
 #'   regular expression to match a type of speaker (entry "regex") and a
 #'   function (entry "fn") that is passed into \code{strapply} (package
@@ -143,7 +146,7 @@
 #'   \item{\code{make_speaker_node(chunk_no, parent)}}{add chunk defined by chunk_no
 #'   as a single speaker node as child to node defined by parent; usually not
 #'   called directly}
-#'   \item{\code{get_agenda_item_calls(maxNcharAgendaItemDesc = 40)}}{apply
+#'   \item{\code{get_agenda_item_calls()}}{apply
 #'   $agenda_item_regex and get calls to agenda items, the return value is a
 #'   data.frame with information on agenda item calls}
 #'   \item{\code{make_header(template = system.file("xml", "teiTemplate.xml",
@@ -198,6 +201,7 @@ PlenaryProtocolParser <- R6Class(
 		
 		stage_regex = NULL,
 		stage_match_n_lines = NULL,
+		stage_mismatch_regex = NULL,
 
 		speaker_regex = NULL, # list
 		speaker_mismatch = NULL, # character
@@ -252,7 +256,7 @@ PlenaryProtocolParser <- R6Class(
 		  
 		  # execute document-specific preprocessing functions
 		  if (self$id %in% names(self$preprocessing_functions)){
-		    txt <- self$preprocessing_functions[[self$id]](self$txt)
+		    self$txt <- self$preprocessing_functions[[self$id]](self$txt)
 		  }
 		  
 		  invisible(self)
@@ -341,7 +345,7 @@ PlenaryProtocolParser <- R6Class(
 		      paste_and_match(
 		        x = chunk, regex = self$stage_regex,
 		        n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
-		        mismatch = character()
+		        mismatch = self$stage_mismatch_regex
 		      )
 		    }
 		  )
@@ -352,7 +356,7 @@ PlenaryProtocolParser <- R6Class(
 		split_by_speakers = function(){
 		  
 		  # The first step is to get the indices of the vector where a call to a speaker occurs.
-		  # We iterate through the list provided by the 'speakerRegex' field, and get the
+		  # We iterate through the list provided by the 'speaker_regex' field, and get the
 		  # index positions. Two checks are performed: (a) If the match for the name of the
 		  # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
 		  # included in the field 'speaker_mismatch' are discarded, too.
@@ -429,7 +433,7 @@ PlenaryProtocolParser <- R6Class(
 		      if (length(match_agenda_item_call) == 0) return( NULL )
 		      
 		      # remove the matching lines that are known to be mismatches
-		      mismatches <- self$agenda_item_mismatch[[self$filename]]
+		      mismatches <- self$agenda_item_mismatch[[self$id]]
 		      if (!is.null(mismatches)){
 		        agenda_item_mismatch_position <- unique(unlist(lapply(mismatches, function(mismatch) grep(mismatch, chunk))))
 		        if (length(agenda_item_mismatch_position) > 0){
@@ -475,9 +479,12 @@ PlenaryProtocolParser <- R6Class(
 		
 		make_speaker_node = function(chunk_no, parent){
 		  lines <- self$chunks[[chunk_no]]
+		  
 		  # remove empty lines, if necessary
 		  empty_lines <- grep("^\\s*$", lines)
 		  if (length(empty_lines) > 0) lines <- lines[-empty_lines]  
+		  
+		  lines <- gsub("\\s+", " ", lines)
 		  
 		  type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunk_no]])
 		  
@@ -543,24 +550,29 @@ PlenaryProtocolParser <- R6Class(
 		  } else {
 		    topicCallDf <- self$get_agenda_item_calls()
 		    if (is.null(topicCallDf)){
-		      agendaItemChunks <- list(1:length(self$chunks))
+		      agendaItemChunks <- list(1L:length(self$chunks))
 		      topicCallDf <- data.frame(chunk = 1, position = NA, type = NA, desc = NA)
 		    } else {
 		      topicCallChunks <- topicCallDf[["chunk"]]
 		      # to include the last para in the last topic called
 		      if (max(topicCallChunks) != length(self$chunks)){
-		        topicCallChunks <- c(topicCallChunks, length(self$chunks))
+		        topicCallChunks <- unique(c(topicCallChunks, length(self$chunks))) # unique may be unnecessary
 		      }
-		      howToCut <- cut(x = 1:length(self$chunks), breaks = topicCallChunks, include.lowest = TRUE)
-		      howToCutInt <- as.integer(howToCut)
-		      howToCutInt[which(is.na(howToCutInt))] <- 0
-		      if (0 %in% howToCutInt){
-		        topicCallDf <- rbind(data.frame(chunk = 1, position = NA, type = NA, desc = NA), topicCallDf)
+		      if (length(self$chunks) > 1L){
+		        howToCut <- cut(x = 1L:length(self$chunks), breaks = topicCallChunks, include.lowest = TRUE) # will return factor
+		        howToCutInt <- as.integer(howToCut)
+		        howToCutInt[which(is.na(howToCutInt))] <- 0L
+		        if (0L %in% howToCutInt){
+		          topicCallDf <- rbind(data.frame(chunk = 1, position = NA, type = NA, desc = NA), topicCallDf)
+		        }
+		      } else {
+		        # cut will not work if the number of chunks is 1 and the chunk includes an agenda item call
+		        howToCutInt <- 1L
 		      }
-		      agendaItemChunks <- split(1:length(self$chunks), howToCutInt)
+		      agendaItemChunks <- split(1L:length(self$chunks), howToCutInt)
 		    }
 		    lapply(
-		      1:length(agendaItemChunks),
+		      1L:length(agendaItemChunks),
 		      function(i){
 		        newAgendaItemNode <- xml_add_child(
 		          .x = bodyNode, .value = "div", type = "agenda_item", 
