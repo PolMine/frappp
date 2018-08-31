@@ -412,7 +412,7 @@ PlenaryProtocolParser <- R6Class(
 		    names(retval) <- NULL
 		    return( unlist(retval) )
 		  }
-		  self$chunks <- lapply(self$chunks, .processor)
+		  self$chunks[which(names(self$chunks) != exclude)] <- lapply(self$chunks[which(names(self$chunks) != exclude)], .processor)
 		  invisible(self)
 		},
 		
@@ -433,7 +433,7 @@ PlenaryProtocolParser <- R6Class(
 		      if (length(match_agenda_item_call) == 0) return( NULL )
 		      
 		      # remove the matching lines that are known to be mismatches
-		      mismatches <- self$agenda_item_mismatch[[self$id]]
+		      if (length(self$agenda_item_mismatch) > 0) mismatches <- self$agenda_item_mismatch[[self$id]] else mismatches <- NULL
 		      if (!is.null(mismatches)){
 		        agenda_item_mismatch_position <- unique(unlist(lapply(mismatches, function(mismatch) grep(mismatch, chunk))))
 		        if (length(agenda_item_mismatch_position) > 0){
