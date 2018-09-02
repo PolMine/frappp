@@ -6,8 +6,9 @@
 #' @param x character vector to be processed
 #' @param threshold number of characters per line to distinguish whether to make
 #'   / not to make a paragraph
+#' @param new_paragraph_term character vector or expression which should start a new paragraph
 #' @export paragraphize
-paragraphize <- function(x, threshold = 40){
+paragraphize <- function(x, threshold = 40, new_paragraph_term = NULL){
   # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
   # and the next line does not start with a big capital letter, the hyphen is 
   # removed.
@@ -28,8 +29,33 @@ paragraphize <- function(x, threshold = 40){
   # assume that a new paragraph begins, if a line ends with a
   # punctuation mark, and if the length of the line undercuts a
   # certain threshold (hardcoded, 40).
-  shortLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
-  x2[shortLines] <- sprintf("%s<linebreak/>", x2[shortLines])
+  breakLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
+  
+  # In addition, we can assume a paragraph if the line ends with a colon 
+  # (indenpendent from the length of the line) and the next line
+  # starts with a capital letter (might be too language dependent?)
+  
+  colonLines <- which(grepl(".*\\:\\s*$", x2))
+  colBreakLines <- colonLines[which(grepl("^[A-Z]+.*", x2[colonLines+1]))]
+  breakLines <- unique(unname(c(breakLines, colBreakLines)))
+  
+  # In addition, there are document specific lines in which
+  # it would be advantageous for the following processing steps
+  # if a linebreak would occur.
+  
+  # Wir kommen nun zu 
+  # Zweite Aktuelle Debatte [Insert Linebreak here]
+  
+  
+  if (!is.null(new_paragraph_term)) {
+    if (length(new_paragraph_term) > 1) new_paragraph_term <- paste(new_paragraph_term, collapse = "|")
+    termLines <- which(grepl(paste0("^", new_paragraph_term, ".*"), x2))
+    breakLines <- unique(unname(c(breakLines, termLines)))
+  }
+
+  x2[breakLines] <- sprintf("%s<linebreak/>", x2[breakLines])
+  
+  
   
   # Paste everything, and break it up again
   concatenated <- paste(x2, collapse = "")

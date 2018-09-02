@@ -387,7 +387,7 @@ PlenaryProtocolParser <- R6Class(
 		  invisible(self)
 		},
 
-		reconstruct_paragraphs = function(exclude = "pres", threshold = 40){
+		reconstruct_paragraphs = function(exclude = NULL, threshold = 40, new_paragraph_term = NULL){
 		  # The general scheme is that we iterate through the chunks. Thus there 
 		  # is a helper function '.chunkProcessor' to handle the individual chunks.
 		  .processor <- function(chunk){
@@ -405,14 +405,19 @@ PlenaryProtocolParser <- R6Class(
 		    
 		    # iterate through the list of speech and interjections.
 		    retval <- lapply(subchunks, function(x){
-		      y <- paragraphize(x = x, threshold = threshold)
+		      y <- paragraphize(x = x, threshold = threshold, new_paragraph_term = new_paragraph_term)
 		      if (is.null(names(y))) names(y) <- rep("", times = length(y))
 		      y
 		    })
 		    names(retval) <- NULL
 		    return( unlist(retval) )
 		  }
-		  self$chunks[which(names(self$chunks) != exclude)] <- lapply(self$chunks[which(names(self$chunks) != exclude)], .processor)
+		  if (!is.null(exclude)) {
+		      self$chunks[which(names(self$chunks) != exclude)] <- lapply(self$chunks[which(names(self$chunks) != exclude)], .processor)
+		      } else { 
+		        self$chunks<- lapply(self$chunks, .processor)
+		      }
+		      
 		  invisible(self)
 		},
 		
@@ -463,7 +468,9 @@ PlenaryProtocolParser <- R6Class(
 		            agenda_item_title
 		          }
 		        } else {
+		          
 		          agenda_item_desc <- agenda_item_title
+		            
 		        }
 		      }
 		      data.frame(
@@ -591,7 +598,7 @@ PlenaryProtocolParser <- R6Class(
 		  self$get_metadata() # returns a list with sessionNo, lp, date
 		  self$split_by_speakers()
 		  # self$concatenateMultilineInterjections()
-		  self$reconstruct_paragraphs(exclude = "pres")
+		  self$reconstruct_paragraphs()
 		  self$make_header()
 		  self$make_body()
 		  invisible(self)
@@ -629,7 +636,7 @@ PlenaryProtocolParser <- R6Class(
 		  self$get_debate()
 		  self$split_by_speakers()
 		  self$concatenateMultilineInterjections() # in package ctk.plpr
-		  self$reconstruct_paragraphs(exclude = "pres")
+		  self$reconstruct_paragraphs()
 		  regexMatches <- lapply(
 		    1:length(self$chunks),
 		    function(i) {
