@@ -7,17 +7,26 @@
 #' @param threshold number of characters per line to distinguish whether to make
 #'   / not to make a paragraph
 #' @param new_paragraph_term character vector or expression which should start a new paragraph
+#' @param language for language specific heuristics
 #' @export paragraphize
-paragraphize <- function(x, threshold = 40, new_paragraph_term = NULL){
+paragraphize <- function(x, threshold = 40, new_paragraph_term = NULL, language = NULL){
   # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
   # and the next line does not start with a big capital letter, the hyphen is 
   # removed.
+  
+  # For German this can be problematic as composite expressions
+  # as "verhandel- und planbar" are thinkable. Hence, we introduce 
+  # a heuristic for that.
   if (length(x) == 1) return(x)
   x2 <- sapply(
     1:length(x),
     function(i) {
       if (grepl("-$", x[i])){
+        if (language == "de") {
+          y <- if (grepl("^[A-Z]|^und|^oder", x[i+1])) x[i] else gsub("-$", "", x[i])
+        } else {
         y <- if (grepl("^[A-Z]", x[i+1])) x[i] else gsub("-$", "", x[i])
+        }
       } else {
         y <- gsub("^\\s*(.*?)\\s*$", "\\1 ", x[i])
       }
@@ -29,14 +38,16 @@ paragraphize <- function(x, threshold = 40, new_paragraph_term = NULL){
   # assume that a new paragraph begins, if a line ends with a
   # punctuation mark, and if the length of the line undercuts a
   # certain threshold (hardcoded, 40).
+  
   breakLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
   
   # In addition, we can assume a paragraph if the line ends with a colon 
   # (indenpendent from the length of the line) and the next line
-  # starts with a capital letter (might be too language dependent?)
+  # starts with a capital letter (might be too language dependent?) or a
+  # dash or hyphen.
   
   colonLines <- which(grepl(".*\\:\\s*$", x2))
-  colBreakLines <- colonLines[which(grepl("^[A-Z]+.*", x2[colonLines+1]))]
+  colBreakLines <- colonLines[which(grepl("^([A-Z]|\\-|\\–|\\—)+.*", x2[colonLines+1]))]
   breakLines <- unique(unname(c(breakLines, colBreakLines)))
   
   # In addition, there are document specific lines in which
@@ -45,7 +56,6 @@ paragraphize <- function(x, threshold = 40, new_paragraph_term = NULL){
   
   # Wir kommen nun zu 
   # Zweite Aktuelle Debatte [Insert Linebreak here]
-  
   
   if (!is.null(new_paragraph_term)) {
     if (length(new_paragraph_term) > 1) new_paragraph_term <- paste(new_paragraph_term, collapse = "|")
