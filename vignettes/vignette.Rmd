@@ -120,6 +120,7 @@ PPP$speaker_regex <- list(
     )
 
 )
+
 ```
 
 It is futile to seek for the regular expression that will always match perfectly. Sometimes, our regular expression will match unwantedly. A vector of speaker mismatches will be used to omit unwanted matches. In our case, we do not yet need that, however.
@@ -136,6 +137,8 @@ Detecting calls to agenda items is optional.  The body of a document can also be
 ```{r agenda_item_regex}
 PPP$agenda_item_regex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
 PPP$agenda_item_types <- c(any = "debate")
+
+PPP$agenda_item_mismatch <- character()
 ```
 
 
@@ -147,6 +150,8 @@ To mark-up stage instructions, such as interjections, supply a named character v
 PPP$stage_regex <- c(
   end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
 )
+
+PPP$stage_mismatch_regex <- character()
 ```
 
 
@@ -247,11 +252,10 @@ PPP$stage_match_n_lines <- 2L
 PPP$detect_stage_regex_matches()
 ```
 
-
 Sixth: We reconstruct the paragraphs!
 
 ```{r}
-PPP$reconstruct_paragraphs(exclude = "pres")
+PPP$reconstruct_paragraphs(exclude = "pres", language = "de")
 ```
 
 See `PPP$chunks[[2]]` to see the result of this procedure. When reconstructing paragraphs, the heuristic is that lines are concatenated, when their length undercuts a standard length. To guess the number of characters per line that might be optimal, the method `$showNcharHistogram()` can be used.
@@ -284,7 +288,7 @@ PPP$read_file(filename = undoc_tmp, id = "A/71/PV.1")$
   preprocessing()$
   split_by_speakers()$
   detect_stage_regex_matches()$
-  reconstruct_paragraphs(exclude = "pres")$
+  reconstruct_paragraphs(exclude = "pres", language = "de")$
   make_body()$
   save_xml(filename = tempfile())
 ```
@@ -352,10 +356,14 @@ VerbatimRecordUNGA <- R6Class(
       self$speaker_mismatch <- character()
       self$agenda_item_regex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
       self$agenda_item_types <- c(any = "debate")
+      self$agenda_item_mismatch <- character()
+
       self$stage_regex <- c(
         end_of_session = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$"
       )
       
+      self$stage_mismatch_regex <- character()
+
       invisible(self)
     },
     
@@ -417,7 +425,7 @@ VerbatimRecordUNGA <- R6Class(
       if (verbose) message("... detecting stage instructions")
       self$detect_stage_regex_matches()
       if (verbose) message("... reconstructing paragraphs")
-      self$reconstruct_paragraphs(exclude = "pres")
+      self$reconstruct_paragraphs(exclude = "pres", language = "de")
       if (verbose) message("... making body")
       self$make_body()
       if (verbose) message("... saving TEI document to file: ", teifile)
@@ -437,7 +445,6 @@ tei <- UNGAParser$xmlify(id = "A/71/PV.1", txtfile = undoc_tmp, pdffile = doc, x
 ```
 
 To check whether the result is ok, use `cat(as.character(tei))`.
-
 
 ## Processing multiple documents
 

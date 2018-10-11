@@ -387,7 +387,7 @@ PlenaryProtocolParser <- R6Class(
 		  invisible(self)
 		},
 
-		reconstruct_paragraphs = function(exclude = NULL, threshold = 40, new_paragraph_term = NULL, language = NULL){
+		reconstruct_paragraphs = function(exclude = NULL, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = NULL){
 		  # The general scheme is that we iterate through the chunks. Thus there 
 		  # is a helper function '.chunkProcessor' to handle the individual chunks.
 		  .processor <- function(chunk){
@@ -405,7 +405,7 @@ PlenaryProtocolParser <- R6Class(
 		    
 		    # iterate through the list of speech and interjections.
 		    retval <- lapply(subchunks, function(x){
-		      y <- paragraphize(x = x, threshold = threshold, new_paragraph_term = new_paragraph_term, language = language)
+		      y <- paragraphize(x = x, threshold = threshold, start_paragraph_term = start_paragraph_term, end_paragraph_term = end_paragraph_term, language = language)
 		      if (is.null(names(y))) names(y) <- rep("", times = length(y))
 		      y
 		    })

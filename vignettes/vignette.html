@@ -12,7 +12,7 @@
 
 <meta name="author" content="Andreas Blätte (andreas.blaette@uni-due.de)" />
 
-<meta name="date" content="2018-04-17" />
+<meta name="date" content="2018-10-11" />
 
 <title>Introducing the Framework for Parsing Plenary Protocols (frappp)</title>
 
@@ -22,7 +22,7 @@
 <style type="text/css">
 a.sourceLine { display: inline-block; line-height: 1.25; }
 a.sourceLine { pointer-events: none; color: inherit; text-decoration: inherit; }
-a.sourceLine:empty { height: 1.2em; position: absolute; }
+a.sourceLine:empty { height: 1.2em; }
 .sourceCode { overflow: visible; }
 code.sourceCode { white-space: pre; position: relative; }
 div.sourceCode { margin: 1em 0; }
@@ -35,13 +35,11 @@ code.sourceCode { white-space: pre-wrap; }
 a.sourceLine { text-indent: -1em; padding-left: 1em; }
 }
 pre.numberSource a.sourceLine
-  { position: relative; }
-pre.numberSource a.sourceLine:empty
-  { position: absolute; }
+  { position: relative; left: -4em; }
 pre.numberSource a.sourceLine::before
   { content: attr(data-line-number);
-    position: absolute; left: -5em; text-align: right; vertical-align: baseline;
-    border: none; pointer-events: all;
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; pointer-events: all; display: inline-block;
     -webkit-touch-callout: none; -webkit-user-select: none;
     -khtml-user-select: none; -moz-user-select: none;
     -ms-user-select: none; user-select: none;
@@ -280,7 +278,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 
 <h1 class="title toc-ignore">Introducing the Framework for Parsing Plenary Protocols (frappp)</h1>
 <h4 class="author"><em>Andreas Blätte (<a href="mailto:andreas.blaette@uni-due.de">andreas.blaette@uni-due.de</a>)</em></h4>
-<h4 class="date"><em>2018-04-17</em></h4>
+<h4 class="date"><em>2018-10-11</em></h4>
 
 
 
@@ -367,14 +365,18 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <h4>Define regular expressions to detect calls for agenda items</h4>
 <p>Detecting calls to agenda items is optional. The body of a document can also be created with <code>$makeBody(agendaItems = FALSE)</code>. For detecting agenda item calls, define the field <em>agendaItemRegex</em> as a named character vector of (alternative) regular expressions that will match a call to an agenda item.</p>
 <div class="sourceCode" id="cb11"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb11-1" data-line-number="1">PPP<span class="op">$</span>agenda_item_regex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
-<a class="sourceLine" id="cb11-2" data-line-number="2">PPP<span class="op">$</span>agenda_item_types &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a></code></pre></div>
+<a class="sourceLine" id="cb11-2" data-line-number="2">PPP<span class="op">$</span>agenda_item_types &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a>
+<a class="sourceLine" id="cb11-3" data-line-number="3"></a>
+<a class="sourceLine" id="cb11-4" data-line-number="4">PPP<span class="op">$</span>agenda_item_mismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a></code></pre></div>
 </div>
 <div id="define-regular-expressions-to-detect-stage-instructions" class="section level4">
 <h4>Define regular expressions to detect stage instructions</h4>
 <p>To mark-up stage instructions, such as interjections, supply a named character vector with regular expressions. In the document that is generated, the value of the <em>type</em> attribute of the <em>stage</em> element surrounding what has been matched will be the name of the regular expression.</p>
 <div class="sourceCode" id="cb12"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb12-1" data-line-number="1">PPP<span class="op">$</span>stage_regex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
 <a class="sourceLine" id="cb12-2" data-line-number="2">  <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb12-3" data-line-number="3">)</a></code></pre></div>
+<a class="sourceLine" id="cb12-3" data-line-number="3">)</a>
+<a class="sourceLine" id="cb12-4" data-line-number="4"></a>
+<a class="sourceLine" id="cb12-5" data-line-number="5">PPP<span class="op">$</span>stage_mismatch_regex &lt;-<span class="st"> </span><span class="kw">character</span>()</a></code></pre></div>
 </div>
 </div>
 </div>
@@ -440,7 +442,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <div class="sourceCode" id="cb20"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb20-1" data-line-number="1">PPP<span class="op">$</span>stage_match_n_lines &lt;-<span class="st"> </span>2L</a>
 <a class="sourceLine" id="cb20-2" data-line-number="2">PPP<span class="op">$</span><span class="kw">detect_stage_regex_matches</span>()</a></code></pre></div>
 <p>Sixth: We reconstruct the paragraphs!</p>
-<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">reconstruct_paragraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a></code></pre></div>
+<div class="sourceCode" id="cb21"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb21-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">reconstruct_paragraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>, <span class="dt">language =</span> <span class="st">&quot;de&quot;</span>)</a></code></pre></div>
 <p>See <code>PPP$chunks[[2]]</code> to see the result of this procedure. When reconstructing paragraphs, the heuristic is that lines are concatenated, when their length undercuts a standard length. To guess the number of characters per line that might be optimal, the method <code>$showNcharHistogram()</code> can be used.</p>
 <p>Seven. All preparatory steps have been performed. We now insert the speakers and the text of their speeches into the body of the XML document already present in the <code>$xml</code> field.</p>
 <div class="sourceCode" id="cb22"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb22-1" data-line-number="1">PPP<span class="op">$</span><span class="kw">make_body</span>()</a></code></pre></div>
@@ -456,7 +458,7 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <a class="sourceLine" id="cb25-4" data-line-number="4"><span class="st">  </span><span class="kw">preprocessing</span>()<span class="op">$</span></a>
 <a class="sourceLine" id="cb25-5" data-line-number="5"><span class="st">  </span><span class="kw">split_by_speakers</span>()<span class="op">$</span></a>
 <a class="sourceLine" id="cb25-6" data-line-number="6"><span class="st">  </span><span class="kw">detect_stage_regex_matches</span>()<span class="op">$</span></a>
-<a class="sourceLine" id="cb25-7" data-line-number="7"><span class="st">  </span><span class="kw">reconstruct_paragraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)<span class="op">$</span></a>
+<a class="sourceLine" id="cb25-7" data-line-number="7"><span class="st">  </span><span class="kw">reconstruct_paragraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>, <span class="dt">language =</span> <span class="st">&quot;de&quot;</span>)<span class="op">$</span></a>
 <a class="sourceLine" id="cb25-8" data-line-number="8"><span class="st">  </span><span class="kw">make_body</span>()<span class="op">$</span></a>
 <a class="sourceLine" id="cb25-9" data-line-number="9"><span class="st">  </span><span class="kw">save_xml</span>(<span class="dt">filename =</span> <span class="kw">tempfile</span>())</a></code></pre></div>
 </div>
@@ -513,80 +515,84 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 <a class="sourceLine" id="cb27-40" data-line-number="40">      self<span class="op">$</span>speaker_mismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a>
 <a class="sourceLine" id="cb27-41" data-line-number="41">      self<span class="op">$</span>agenda_item_regex &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;^Item</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">sof.*agenda.*$&quot;</span>)</a>
 <a class="sourceLine" id="cb27-42" data-line-number="42">      self<span class="op">$</span>agenda_item_types &lt;-<span class="st"> </span><span class="kw">c</span>(<span class="dt">any =</span> <span class="st">&quot;debate&quot;</span>)</a>
-<a class="sourceLine" id="cb27-43" data-line-number="43">      self<span class="op">$</span>stage_regex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb27-44" data-line-number="44">        <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb27-45" data-line-number="45">      )</a>
-<a class="sourceLine" id="cb27-46" data-line-number="46">      </a>
-<a class="sourceLine" id="cb27-47" data-line-number="47">      <span class="kw">invisible</span>(self)</a>
-<a class="sourceLine" id="cb27-48" data-line-number="48">    },</a>
-<a class="sourceLine" id="cb27-49" data-line-number="49">    </a>
-<a class="sourceLine" id="cb27-50" data-line-number="50">    </a>
-<a class="sourceLine" id="cb27-51" data-line-number="51">    <span class="dt">get_metadata =</span> <span class="cf">function</span>(filename){</a>
-<a class="sourceLine" id="cb27-52" data-line-number="52">      pdfdoc &lt;-<span class="st"> </span>pdftools<span class="op">::</span><span class="kw">pdf_text</span>(<span class="dt">pdf =</span> doc)</a>
-<a class="sourceLine" id="cb27-53" data-line-number="53">      page1 &lt;-<span class="st"> </span><span class="kw">strsplit</span>(pdfdoc, <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)[[<span class="dv">1</span>]]</a>
-<a class="sourceLine" id="cb27-54" data-line-number="54">      </a>
-<a class="sourceLine" id="cb27-55" data-line-number="55">      <span class="co"># get session</span></a>
-<a class="sourceLine" id="cb27-56" data-line-number="56">      docIdRegex &lt;-<span class="st"> &quot;^.*?</span><span class="ch">\\</span><span class="st">s*(A)</span><span class="ch">\\</span><span class="st">s*/(</span><span class="ch">\\</span><span class="st">d+)/</span><span class="ch">\\</span><span class="st">s*(PV</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d+).*?$&quot;</span></a>
-<a class="sourceLine" id="cb27-57" data-line-number="57">      session &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(<span class="dt">X =</span> page1, <span class="dt">pattern =</span> docIdRegex))[<span class="dv">1</span>,<span class="dv">2</span>]</a>
+<a class="sourceLine" id="cb27-43" data-line-number="43">      self<span class="op">$</span>agenda_item_mismatch &lt;-<span class="st"> </span><span class="kw">character</span>()</a>
+<a class="sourceLine" id="cb27-44" data-line-number="44"></a>
+<a class="sourceLine" id="cb27-45" data-line-number="45">      self<span class="op">$</span>stage_regex &lt;-<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb27-46" data-line-number="46">        <span class="dt">end_of_session =</span> <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*The</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s+rose</span><span class="ch">\\</span><span class="st">s+at</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d+</span><span class="ch">\\</span><span class="st">s[ap]</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb27-47" data-line-number="47">      )</a>
+<a class="sourceLine" id="cb27-48" data-line-number="48">      </a>
+<a class="sourceLine" id="cb27-49" data-line-number="49">      self<span class="op">$</span>stage_mismatch_regex &lt;-<span class="st"> </span><span class="kw">character</span>()</a>
+<a class="sourceLine" id="cb27-50" data-line-number="50"></a>
+<a class="sourceLine" id="cb27-51" data-line-number="51">      <span class="kw">invisible</span>(self)</a>
+<a class="sourceLine" id="cb27-52" data-line-number="52">    },</a>
+<a class="sourceLine" id="cb27-53" data-line-number="53">    </a>
+<a class="sourceLine" id="cb27-54" data-line-number="54">    </a>
+<a class="sourceLine" id="cb27-55" data-line-number="55">    <span class="dt">get_metadata =</span> <span class="cf">function</span>(filename){</a>
+<a class="sourceLine" id="cb27-56" data-line-number="56">      pdfdoc &lt;-<span class="st"> </span>pdftools<span class="op">::</span><span class="kw">pdf_text</span>(<span class="dt">pdf =</span> doc)</a>
+<a class="sourceLine" id="cb27-57" data-line-number="57">      page1 &lt;-<span class="st"> </span><span class="kw">strsplit</span>(pdfdoc, <span class="st">&quot;</span><span class="ch">\n</span><span class="st">&quot;</span>)[[<span class="dv">1</span>]]</a>
 <a class="sourceLine" id="cb27-58" data-line-number="58">      </a>
-<a class="sourceLine" id="cb27-59" data-line-number="59">      <span class="co"># get date</span></a>
-<a class="sourceLine" id="cb27-60" data-line-number="60">      weekdays =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Monday&quot;</span>, <span class="st">&quot;Tuesday&quot;</span>, <span class="st">&quot;Wednesday&quot;</span>, <span class="st">&quot;Thursday&quot;</span>, <span class="st">&quot;Friday&quot;</span>, <span class="st">&quot;Saturday&quot;</span>, <span class="st">&quot;Sunday&quot;</span>)</a>
-<a class="sourceLine" id="cb27-61" data-line-number="61">      months =<span class="st"> </span><span class="kw">c</span>(</a>
-<a class="sourceLine" id="cb27-62" data-line-number="62">        <span class="dt">January =</span> <span class="dv">1</span>, <span class="dt">February =</span> <span class="dv">2</span>, <span class="dt">March =</span> <span class="dv">3</span>, <span class="dt">April =</span> <span class="dv">4</span>, <span class="dt">May =</span> <span class="dv">5</span>, <span class="dt">June =</span> <span class="dv">6</span>,</a>
-<a class="sourceLine" id="cb27-63" data-line-number="63">        <span class="dt">July =</span> <span class="dv">7</span>, <span class="dt">August =</span> <span class="dv">8</span>, <span class="dt">September =</span> <span class="dv">9</span>, <span class="dt">October =</span> <span class="dv">10</span>, <span class="dt">November =</span> <span class="dv">11</span>, <span class="dt">December =</span> <span class="dv">12</span></a>
-<a class="sourceLine" id="cb27-64" data-line-number="64">      )</a>
-<a class="sourceLine" id="cb27-65" data-line-number="65">      dateRegex &lt;-<span class="st"> </span><span class="kw">sprintf</span>(</a>
-<a class="sourceLine" id="cb27-66" data-line-number="66">        <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*(%s),</span><span class="ch">\\</span><span class="st">s*(</span><span class="ch">\\</span><span class="st">d{1,2})</span><span class="ch">\\</span><span class="st">s+(%s)</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d{4}),</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d{1,2}</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d{2}</span><span class="ch">\\</span><span class="st">s+(a</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.|p</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.)</span><span class="ch">\\</span><span class="st">s*$&quot;</span>,</a>
-<a class="sourceLine" id="cb27-67" data-line-number="67">        <span class="kw">paste0</span>(weekdays, <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>),</a>
-<a class="sourceLine" id="cb27-68" data-line-number="68">        <span class="kw">paste0</span>(<span class="kw">names</span>(months), <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>)</a>
-<a class="sourceLine" id="cb27-69" data-line-number="69">      )</a>
-<a class="sourceLine" id="cb27-70" data-line-number="70">      dateMatch &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> dateRegex))</a>
-<a class="sourceLine" id="cb27-71" data-line-number="71">      year &lt;-<span class="st"> </span>dateMatch[<span class="dv">1</span>,<span class="dv">4</span>]</a>
-<a class="sourceLine" id="cb27-72" data-line-number="72">      month &lt;-<span class="st"> </span><span class="kw">as.integer</span>(months[dateMatch[<span class="dv">1</span>,<span class="dv">3</span>]])</a>
-<a class="sourceLine" id="cb27-73" data-line-number="73">      day &lt;-<span class="st"> </span><span class="kw">as.integer</span>(dateMatch[<span class="dv">1</span>,<span class="dv">2</span>])</a>
-<a class="sourceLine" id="cb27-74" data-line-number="74">      dateOfMeeting &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%s-%02d-%02d&quot;</span>, year, month, day)</a>
-<a class="sourceLine" id="cb27-75" data-line-number="75">      </a>
-<a class="sourceLine" id="cb27-76" data-line-number="76">      <span class="co"># get meeting</span></a>
-<a class="sourceLine" id="cb27-77" data-line-number="77">      meetingRegex &lt;-<span class="st"> &quot;</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d+)(st|nd|rd|th)</span><span class="ch">\\</span><span class="st">s+plenary</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
-<a class="sourceLine" id="cb27-78" data-line-number="78">      meeting &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> meetingRegex))[<span class="dv">1</span>,<span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb27-59" data-line-number="59">      <span class="co"># get session</span></a>
+<a class="sourceLine" id="cb27-60" data-line-number="60">      docIdRegex &lt;-<span class="st"> &quot;^.*?</span><span class="ch">\\</span><span class="st">s*(A)</span><span class="ch">\\</span><span class="st">s*/(</span><span class="ch">\\</span><span class="st">d+)/</span><span class="ch">\\</span><span class="st">s*(PV</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d+).*?$&quot;</span></a>
+<a class="sourceLine" id="cb27-61" data-line-number="61">      session &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(<span class="dt">X =</span> page1, <span class="dt">pattern =</span> docIdRegex))[<span class="dv">1</span>,<span class="dv">2</span>]</a>
+<a class="sourceLine" id="cb27-62" data-line-number="62">      </a>
+<a class="sourceLine" id="cb27-63" data-line-number="63">      <span class="co"># get date</span></a>
+<a class="sourceLine" id="cb27-64" data-line-number="64">      weekdays =<span class="st"> </span><span class="kw">c</span>(<span class="st">&quot;Monday&quot;</span>, <span class="st">&quot;Tuesday&quot;</span>, <span class="st">&quot;Wednesday&quot;</span>, <span class="st">&quot;Thursday&quot;</span>, <span class="st">&quot;Friday&quot;</span>, <span class="st">&quot;Saturday&quot;</span>, <span class="st">&quot;Sunday&quot;</span>)</a>
+<a class="sourceLine" id="cb27-65" data-line-number="65">      months =<span class="st"> </span><span class="kw">c</span>(</a>
+<a class="sourceLine" id="cb27-66" data-line-number="66">        <span class="dt">January =</span> <span class="dv">1</span>, <span class="dt">February =</span> <span class="dv">2</span>, <span class="dt">March =</span> <span class="dv">3</span>, <span class="dt">April =</span> <span class="dv">4</span>, <span class="dt">May =</span> <span class="dv">5</span>, <span class="dt">June =</span> <span class="dv">6</span>,</a>
+<a class="sourceLine" id="cb27-67" data-line-number="67">        <span class="dt">July =</span> <span class="dv">7</span>, <span class="dt">August =</span> <span class="dv">8</span>, <span class="dt">September =</span> <span class="dv">9</span>, <span class="dt">October =</span> <span class="dv">10</span>, <span class="dt">November =</span> <span class="dv">11</span>, <span class="dt">December =</span> <span class="dv">12</span></a>
+<a class="sourceLine" id="cb27-68" data-line-number="68">      )</a>
+<a class="sourceLine" id="cb27-69" data-line-number="69">      dateRegex &lt;-<span class="st"> </span><span class="kw">sprintf</span>(</a>
+<a class="sourceLine" id="cb27-70" data-line-number="70">        <span class="st">&quot;^</span><span class="ch">\\</span><span class="st">s*(%s),</span><span class="ch">\\</span><span class="st">s*(</span><span class="ch">\\</span><span class="st">d{1,2})</span><span class="ch">\\</span><span class="st">s+(%s)</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d{4}),</span><span class="ch">\\</span><span class="st">s+</span><span class="ch">\\</span><span class="st">d{1,2}</span><span class="ch">\\</span><span class="st">.</span><span class="ch">\\</span><span class="st">d{2}</span><span class="ch">\\</span><span class="st">s+(a</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.|p</span><span class="ch">\\</span><span class="st">.m</span><span class="ch">\\</span><span class="st">.)</span><span class="ch">\\</span><span class="st">s*$&quot;</span>,</a>
+<a class="sourceLine" id="cb27-71" data-line-number="71">        <span class="kw">paste0</span>(weekdays, <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>),</a>
+<a class="sourceLine" id="cb27-72" data-line-number="72">        <span class="kw">paste0</span>(<span class="kw">names</span>(months), <span class="dt">collapse =</span> <span class="st">&quot;|&quot;</span>)</a>
+<a class="sourceLine" id="cb27-73" data-line-number="73">      )</a>
+<a class="sourceLine" id="cb27-74" data-line-number="74">      dateMatch &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> dateRegex))</a>
+<a class="sourceLine" id="cb27-75" data-line-number="75">      year &lt;-<span class="st"> </span>dateMatch[<span class="dv">1</span>,<span class="dv">4</span>]</a>
+<a class="sourceLine" id="cb27-76" data-line-number="76">      month &lt;-<span class="st"> </span><span class="kw">as.integer</span>(months[dateMatch[<span class="dv">1</span>,<span class="dv">3</span>]])</a>
+<a class="sourceLine" id="cb27-77" data-line-number="77">      day &lt;-<span class="st"> </span><span class="kw">as.integer</span>(dateMatch[<span class="dv">1</span>,<span class="dv">2</span>])</a>
+<a class="sourceLine" id="cb27-78" data-line-number="78">      dateOfMeeting &lt;-<span class="st"> </span><span class="kw">sprintf</span>(<span class="st">&quot;%s-%02d-%02d&quot;</span>, year, month, day)</a>
 <a class="sourceLine" id="cb27-79" data-line-number="79">      </a>
-<a class="sourceLine" id="cb27-80" data-line-number="80">      <span class="kw">list</span>(</a>
-<a class="sourceLine" id="cb27-81" data-line-number="81">        <span class="dt">legislativePeriod =</span> <span class="kw">as.integer</span>(session),</a>
-<a class="sourceLine" id="cb27-82" data-line-number="82">        <span class="dt">sessionNo =</span> <span class="kw">as.integer</span>(meeting),</a>
-<a class="sourceLine" id="cb27-83" data-line-number="83">        <span class="dt">date =</span> <span class="kw">as.Date</span>(dateOfMeeting),</a>
-<a class="sourceLine" id="cb27-84" data-line-number="84">        <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
-<a class="sourceLine" id="cb27-85" data-line-number="85">        <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
-<a class="sourceLine" id="cb27-86" data-line-number="86">        <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
-<a class="sourceLine" id="cb27-87" data-line-number="87">        <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
-<a class="sourceLine" id="cb27-88" data-line-number="88">        <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
-<a class="sourceLine" id="cb27-89" data-line-number="89">      )</a>
-<a class="sourceLine" id="cb27-90" data-line-number="90">    },</a>
-<a class="sourceLine" id="cb27-91" data-line-number="91"></a>
-<a class="sourceLine" id="cb27-92" data-line-number="92">    <span class="dt">xmlify =</span> <span class="cf">function</span>(id, txtfile, pdffile, xmlfile, <span class="dt">verbose =</span> <span class="ot">TRUE</span>){</a>
-<a class="sourceLine" id="cb27-93" data-line-number="93">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... getting metadata&quot;</span>)</a>
-<a class="sourceLine" id="cb27-94" data-line-number="94">      metadata &lt;-<span class="st"> </span>self<span class="op">$</span><span class="kw">get_metadata</span>(pdffile)</a>
-<a class="sourceLine" id="cb27-95" data-line-number="95">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reading plain text file: &quot;</span>, txtfile)</a>
-<a class="sourceLine" id="cb27-96" data-line-number="96">      self<span class="op">$</span><span class="kw">read_file</span>(<span class="dt">filename =</span> txtfile, <span class="dt">id =</span> id)</a>
-<a class="sourceLine" id="cb27-97" data-line-number="97">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... adding metadata that has been extracted&quot;</span>)</a>
-<a class="sourceLine" id="cb27-98" data-line-number="98">      self<span class="op">$</span><span class="kw">add_metadata</span>(<span class="dt">metadata =</span> metadata)</a>
-<a class="sourceLine" id="cb27-99" data-line-number="99">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making header&quot;</span>)</a>
-<a class="sourceLine" id="cb27-100" data-line-number="100">      self<span class="op">$</span><span class="kw">make_header</span>()</a>
-<a class="sourceLine" id="cb27-101" data-line-number="101">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... pre-processing plain text&quot;</span>)</a>
-<a class="sourceLine" id="cb27-102" data-line-number="102">      self<span class="op">$</span><span class="kw">preprocessing</span>()</a>
-<a class="sourceLine" id="cb27-103" data-line-number="103">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... splitting up by speakers&quot;</span>)</a>
-<a class="sourceLine" id="cb27-104" data-line-number="104">      self<span class="op">$</span><span class="kw">split_by_speakers</span>()</a>
-<a class="sourceLine" id="cb27-105" data-line-number="105">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... detecting stage instructions&quot;</span>)</a>
-<a class="sourceLine" id="cb27-106" data-line-number="106">      self<span class="op">$</span><span class="kw">detect_stage_regex_matches</span>()</a>
-<a class="sourceLine" id="cb27-107" data-line-number="107">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reconstructing paragraphs&quot;</span>)</a>
-<a class="sourceLine" id="cb27-108" data-line-number="108">      self<span class="op">$</span><span class="kw">reconstruct_paragraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>)</a>
-<a class="sourceLine" id="cb27-109" data-line-number="109">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making body&quot;</span>)</a>
-<a class="sourceLine" id="cb27-110" data-line-number="110">      self<span class="op">$</span><span class="kw">make_body</span>()</a>
-<a class="sourceLine" id="cb27-111" data-line-number="111">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... saving TEI document to file: &quot;</span>, teifile)</a>
-<a class="sourceLine" id="cb27-112" data-line-number="112">      self<span class="op">$</span><span class="kw">save_xml</span>(<span class="dt">filename =</span> xmlfile)</a>
-<a class="sourceLine" id="cb27-113" data-line-number="113">      <span class="kw">invisible</span>(self<span class="op">$</span>xml)</a>
-<a class="sourceLine" id="cb27-114" data-line-number="114">    }</a>
-<a class="sourceLine" id="cb27-115" data-line-number="115">  )</a>
-<a class="sourceLine" id="cb27-116" data-line-number="116">)</a></code></pre></div>
+<a class="sourceLine" id="cb27-80" data-line-number="80">      <span class="co"># get meeting</span></a>
+<a class="sourceLine" id="cb27-81" data-line-number="81">      meetingRegex &lt;-<span class="st"> &quot;</span><span class="ch">\\</span><span class="st">s+(</span><span class="ch">\\</span><span class="st">d+)(st|nd|rd|th)</span><span class="ch">\\</span><span class="st">s+plenary</span><span class="ch">\\</span><span class="st">s+meeting</span><span class="ch">\\</span><span class="st">s*$&quot;</span></a>
+<a class="sourceLine" id="cb27-82" data-line-number="82">      meeting &lt;-<span class="st"> </span><span class="kw">do.call</span>(rbind, gsubfn<span class="op">::</span><span class="kw">strapplyc</span>(page1, <span class="dt">pattern =</span> meetingRegex))[<span class="dv">1</span>,<span class="dv">1</span>]</a>
+<a class="sourceLine" id="cb27-83" data-line-number="83">      </a>
+<a class="sourceLine" id="cb27-84" data-line-number="84">      <span class="kw">list</span>(</a>
+<a class="sourceLine" id="cb27-85" data-line-number="85">        <span class="dt">legislativePeriod =</span> <span class="kw">as.integer</span>(session),</a>
+<a class="sourceLine" id="cb27-86" data-line-number="86">        <span class="dt">sessionNo =</span> <span class="kw">as.integer</span>(meeting),</a>
+<a class="sourceLine" id="cb27-87" data-line-number="87">        <span class="dt">date =</span> <span class="kw">as.Date</span>(dateOfMeeting),</a>
+<a class="sourceLine" id="cb27-88" data-line-number="88">        <span class="dt">retrievalDate =</span> <span class="st">&quot;unknown&quot;</span>,</a>
+<a class="sourceLine" id="cb27-89" data-line-number="89">        <span class="dt">filetype =</span> <span class="st">&quot;pdf&quot;</span>,</a>
+<a class="sourceLine" id="cb27-90" data-line-number="90">        <span class="dt">url =</span> <span class="st">&quot;http://www.un.org/en/ga/&quot;</span>,</a>
+<a class="sourceLine" id="cb27-91" data-line-number="91">        <span class="dt">publisher =</span> <span class="st">&quot;United Nations&quot;</span>,</a>
+<a class="sourceLine" id="cb27-92" data-line-number="92">        <span class="dt">title =</span> <span class="st">&quot;Verbatim Records of the United Nations&quot;</span></a>
+<a class="sourceLine" id="cb27-93" data-line-number="93">      )</a>
+<a class="sourceLine" id="cb27-94" data-line-number="94">    },</a>
+<a class="sourceLine" id="cb27-95" data-line-number="95"></a>
+<a class="sourceLine" id="cb27-96" data-line-number="96">    <span class="dt">xmlify =</span> <span class="cf">function</span>(id, txtfile, pdffile, xmlfile, <span class="dt">verbose =</span> <span class="ot">TRUE</span>){</a>
+<a class="sourceLine" id="cb27-97" data-line-number="97">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... getting metadata&quot;</span>)</a>
+<a class="sourceLine" id="cb27-98" data-line-number="98">      metadata &lt;-<span class="st"> </span>self<span class="op">$</span><span class="kw">get_metadata</span>(pdffile)</a>
+<a class="sourceLine" id="cb27-99" data-line-number="99">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reading plain text file: &quot;</span>, txtfile)</a>
+<a class="sourceLine" id="cb27-100" data-line-number="100">      self<span class="op">$</span><span class="kw">read_file</span>(<span class="dt">filename =</span> txtfile, <span class="dt">id =</span> id)</a>
+<a class="sourceLine" id="cb27-101" data-line-number="101">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... adding metadata that has been extracted&quot;</span>)</a>
+<a class="sourceLine" id="cb27-102" data-line-number="102">      self<span class="op">$</span><span class="kw">add_metadata</span>(<span class="dt">metadata =</span> metadata)</a>
+<a class="sourceLine" id="cb27-103" data-line-number="103">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making header&quot;</span>)</a>
+<a class="sourceLine" id="cb27-104" data-line-number="104">      self<span class="op">$</span><span class="kw">make_header</span>()</a>
+<a class="sourceLine" id="cb27-105" data-line-number="105">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... pre-processing plain text&quot;</span>)</a>
+<a class="sourceLine" id="cb27-106" data-line-number="106">      self<span class="op">$</span><span class="kw">preprocessing</span>()</a>
+<a class="sourceLine" id="cb27-107" data-line-number="107">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... splitting up by speakers&quot;</span>)</a>
+<a class="sourceLine" id="cb27-108" data-line-number="108">      self<span class="op">$</span><span class="kw">split_by_speakers</span>()</a>
+<a class="sourceLine" id="cb27-109" data-line-number="109">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... detecting stage instructions&quot;</span>)</a>
+<a class="sourceLine" id="cb27-110" data-line-number="110">      self<span class="op">$</span><span class="kw">detect_stage_regex_matches</span>()</a>
+<a class="sourceLine" id="cb27-111" data-line-number="111">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... reconstructing paragraphs&quot;</span>)</a>
+<a class="sourceLine" id="cb27-112" data-line-number="112">      self<span class="op">$</span><span class="kw">reconstruct_paragraphs</span>(<span class="dt">exclude =</span> <span class="st">&quot;pres&quot;</span>, <span class="dt">language =</span> <span class="st">&quot;de&quot;</span>)</a>
+<a class="sourceLine" id="cb27-113" data-line-number="113">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... making body&quot;</span>)</a>
+<a class="sourceLine" id="cb27-114" data-line-number="114">      self<span class="op">$</span><span class="kw">make_body</span>()</a>
+<a class="sourceLine" id="cb27-115" data-line-number="115">      <span class="cf">if</span> (verbose) <span class="kw">message</span>(<span class="st">&quot;... saving TEI document to file: &quot;</span>, teifile)</a>
+<a class="sourceLine" id="cb27-116" data-line-number="116">      self<span class="op">$</span><span class="kw">save_xml</span>(<span class="dt">filename =</span> xmlfile)</a>
+<a class="sourceLine" id="cb27-117" data-line-number="117">      <span class="kw">invisible</span>(self<span class="op">$</span>xml)</a>
+<a class="sourceLine" id="cb27-118" data-line-number="118">    }</a>
+<a class="sourceLine" id="cb27-119" data-line-number="119">  )</a>
+<a class="sourceLine" id="cb27-120" data-line-number="120">)</a></code></pre></div>
 <p>Having the defined our specified class for processing UN General Assembly documents, much less code is required to process a single document.</p>
 <div class="sourceCode" id="cb28"><pre class="sourceCode r"><code class="sourceCode r"><a class="sourceLine" id="cb28-1" data-line-number="1">UNGAParser &lt;-<span class="st"> </span>VerbatimRecordUNGA<span class="op">$</span><span class="kw">new</span>()</a>
 <a class="sourceLine" id="cb28-2" data-line-number="2">teifile &lt;-<span class="st"> </span><span class="kw">tempfile</span>()</a>
@@ -715,8 +721,8 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 ##       &lt;editionStmt&gt;
 ##         &lt;edition&gt;
 ##           &lt;package&gt;frappp&lt;/package&gt;
-##           &lt;version&gt;0.4.1.9003&lt;/version&gt;
-##           &lt;birthday&gt;2018-04-17&lt;/birthday&gt;
+##           &lt;version&gt;0.4.1.9005&lt;/version&gt;
+##           &lt;birthday&gt;2018-10-11&lt;/birthday&gt;
 ##         &lt;/edition&gt;
 ##       &lt;/editionStmt&gt;
 ##       &lt;publicationStmt&gt;
@@ -740,19 +746,26 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 ##   &lt;/teiHeader&gt;
 ##   &lt;text&gt;
 ##     &lt;body&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;1&quot; what=&quot;&quot; desc=&quot;Item 2 of the provisional agenda Minute of silent prayer or meditation&quot;&gt;
+##       &lt;div type=&quot;agenda_item&quot; n=&quot;1&quot; what=&quot;&quot; desc=&quot;Minute of silent prayer or meditation&quot;&gt;
 ##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
 ##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;I declare open the seventy-first session of the General Assembly.&lt;/p&gt;
-##           &lt;p&gt;Item 2 of the provisional agenda Minute of silent prayer or meditation&lt;/p&gt;
+##           &lt;p&gt;I declare open the seventy-first &lt;/p&gt;
+##           &lt;p&gt;session of the General Assembly.&lt;/p&gt;
+##           &lt;p&gt;Item 2 of the provisional agenda&lt;/p&gt;
+##           &lt;p&gt;Minute of silent prayer or meditation&lt;/p&gt;
 ##         &lt;/sp&gt;
 ##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
 ##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;In accordance with rule 62 of the rules of procedure, I invite representatives to stand and observe one minute of silent prayer or meditation. The members of the General Assembly observed a minute of silent prayer or meditation.&lt;/p&gt;
+##           &lt;p&gt;In accordance with rule 62 of the &lt;/p&gt;
+##           &lt;p&gt;rules of procedure, I invite representatives to stand and &lt;/p&gt;
+##           &lt;p&gt;observe one minute of silent prayer or meditation.&lt;/p&gt;
+##           &lt;p&gt;The members of the General Assembly observed a &lt;/p&gt;
+##           &lt;p&gt;minute of silent prayer or meditation.&lt;/p&gt;
 ##         &lt;/sp&gt;
 ##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
 ##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;I now give the floor to the Secretary-General, His Excellency Mr. Ban Ki-moon.&lt;/p&gt;
+##           &lt;p&gt;I now give the floor to the Secretary-&lt;/p&gt;
+##           &lt;p&gt;General, His Excellency Mr. Ban Ki-moon.&lt;/p&gt;
 ##         &lt;/sp&gt;
 ##         &lt;sp who=&quot;The Secretary-General&quot; state=&quot;NA&quot; role=&quot;secretary-general&quot; position=&quot;secretary-general&quot;&gt;
 ##           &lt;speaker&gt;The Secretary-General:&lt;/speaker&gt;
@@ -762,36 +775,100 @@ code > span.fu { color: #900; font-weight: bold; }  code > span.er { color: #a61
 ##         &lt;/sp&gt;
 ##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
 ##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;I thank the Secretary-General for his statement.&lt;/p&gt;
-##           &lt;p&gt;Item 138 of the provisional agenda Scale of assessments for the apportionment of the expenses of the United Nations (A/71/381)&lt;/p&gt;
+##           &lt;p&gt;I thank the Secretary-General for &lt;/p&gt;
+##           &lt;p&gt;his statement.&lt;/p&gt;
+##           &lt;p&gt;Item 138 of the provisional agenda&lt;/p&gt;
+##           &lt;p&gt;Scale of assessments for the apportionment of the &lt;/p&gt;
+##           &lt;p&gt;expenses of the United Nations (A/71/381)&lt;/p&gt;
 ##         &lt;/sp&gt;
 ##       &lt;/div&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;2&quot; what=&quot;&quot; desc=&quot;Item 138 of the provisional agenda Scale of assessments for the apportionment of the expenses of the United Nations (A/71/381)&quot;&gt;
+##       &lt;div type=&quot;agenda_item&quot; n=&quot;2&quot; what=&quot;&quot; desc=&quot;Scale of assessments for the apportionment of the &quot;&gt;
 ##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
 ##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;Next, I would like, in keeping with established practice, to invite the attention of the General Assembly to document A/71/381. It contains a letter from the Secretary-General addressed to the President of the General Assembly, in which he informs the Assembly that four Member States are in arrears in the payment of their financial contributions to the United Nations within the terms of Article 19 of the Charter.&lt;/p&gt;
-##           &lt;p&gt;I would like to remind delegations that, under Article 19 of the Charter,&lt;/p&gt;
-##           &lt;p&gt;“A Member of the United Nations which is in arrears in the payment of its financial contributions to the Organization shall have no vote in the General Assembly if the amount of its arrears equals or exceeds the amount of the contributions due from it for the preceding two full years”.&lt;/p&gt;
-##           &lt;p&gt;May I take it that the General Assembly takes note of the information contained in document A/71/381? It was so decided.&lt;/p&gt;
-##           &lt;p&gt;Item 3 of the provisional agenda Credentials of representatives to the seventy-first session of the General Assembly (a) Appointment of the members of the Credentials Committee&lt;/p&gt;
-##         &lt;/sp&gt;
-##       &lt;/div&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;3&quot; what=&quot;&quot; desc=&quot;Item 3 of the provisional agenda Credentials of representatives to the seventy-first session of the General Assembly (a) Appointment of the members of the Credentials Committee&quot;&gt;
-##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
-##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;Rule 28 of the rules of procedure provides that the General Assembly at the beginning of each session shall appoint, on the proposal of the President, a Credentials Committee consisting of nine members.&lt;/p&gt;
-##           &lt;p&gt;Accordingly, it is proposed that, for the seventyfirst session, the Credentials Committee should consist of the following Member States: Cameroon, China, Malawi, the Netherlands, Paraguay, the Republic of Korea, the Russian Federation, Saint Lucia, and the United States of America.&lt;/p&gt;
-##           &lt;p&gt;May I take it that the States that I have just mentioned are hereby appointed members of the Credentials Committee?&lt;/p&gt;
+##           &lt;p&gt;Next, I would like, in keeping &lt;/p&gt;
+##           &lt;p&gt;with established practice, to invite the attention of the &lt;/p&gt;
+##           &lt;p&gt;General Assembly to document A/71/381. It contains &lt;/p&gt;
+##           &lt;p&gt;a letter from the Secretary-General addressed to the &lt;/p&gt;
+##           &lt;p&gt;President of the General Assembly, in which he informs &lt;/p&gt;
+##           &lt;p&gt;the Assembly that four Member States are in arrears &lt;/p&gt;
+##           &lt;p&gt;in the payment of their financial contributions to the &lt;/p&gt;
+##           &lt;p&gt;United Nations within the terms of Article 19 of the &lt;/p&gt;
+##           &lt;p&gt;Charter.&lt;/p&gt;
+##           &lt;p&gt;I would like to remind delegations that, under &lt;/p&gt;
+##           &lt;p&gt;Article 19 of the Charter,&lt;/p&gt;
+##           &lt;p&gt;“A Member of the United Nations which is in &lt;/p&gt;
+##           &lt;p&gt;arrears in the payment of its financial contributions &lt;/p&gt;
+##           &lt;p&gt;to the Organization shall have no vote in the General &lt;/p&gt;
+##           &lt;p&gt;Assembly if the amount of its arrears equals or &lt;/p&gt;
+##           &lt;p&gt;exceeds the amount of the contributions due from it &lt;/p&gt;
+##           &lt;p&gt;for the preceding two full years”.&lt;/p&gt;
+##           &lt;p&gt;May I take it that the General Assembly takes note &lt;/p&gt;
+##           &lt;p&gt;of the information contained in document A/71/381?&lt;/p&gt;
 ##           &lt;p&gt;It was so decided.&lt;/p&gt;
-##           &lt;p&gt;Item 7 of the provisional agenda Organization of work of the seventy-first session of the General Assembly Letter from the Chair of the Committee on Conferences (A/71/382)&lt;/p&gt;
+##           &lt;p&gt;Item 3 of the provisional agenda&lt;/p&gt;
+##           &lt;p&gt;Credentials of representatives to the seventy-first &lt;/p&gt;
+##           &lt;p&gt;session of the General Assembly&lt;/p&gt;
+##           &lt;p&gt;(a) Appointment of the members of the Credentials &lt;/p&gt;
+##           &lt;p&gt;Committee&lt;/p&gt;
 ##         &lt;/sp&gt;
 ##       &lt;/div&gt;
-##       &lt;div type=&quot;agenda_item&quot; n=&quot;4&quot; what=&quot;&quot; desc=&quot;Item 7 of the provisional agenda Organization of work of the seventy-first session of the General Assembly Letter from the Chair of the Committee on Conferences (A/71/382)&quot;&gt;
+##       &lt;div type=&quot;agenda_item&quot; n=&quot;3&quot; what=&quot;&quot; desc=&quot;Credentials of representatives to the seventy-first &quot;&gt;
 ##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
 ##           &lt;speaker&gt;The President:&lt;/speaker&gt;
-##           &lt;p&gt;The Assembly will now turn its attention to document A/71/382, which contains a letter dated 7 September 2016 from the Chair of the Committee on Conferences addressed to the President of the General Assembly. Members are aware that, pursuant to section 1, paragraph 7, of Assembly resolution 40/243, of 18 December 1985, no subsidiary organ of the General Assembly should be permitted to meet at United Nations Headquarters during the main part of a regular session of the Assembly, unless explicitly authorized by the Assembly.&lt;/p&gt;
-##           &lt;p&gt;On the strict understanding that meetings would have to be accommodated within available facilities and services, authorization is thus sought for the following subsidiary organs: the United Nations Appeals Tribunal; the Committee on Relations with the Host Country; the Committee on the Exercise of the Inalienable Rights of the Palestinian People; the Executive Board of the United Nations Children’s Fund; the United Nations System Chief Executives Board for Coordination; the Board of Auditors; the Panel of External Auditors of the United Nations; the Specialized Agencies; the International Atomic Energy Agency; the Independent Audit Advisory Committee; and the Committee on Conferences itself.&lt;/p&gt;
-##           &lt;p&gt;May I take it that it is the wish of the General Assembly to authorize those subsidiary organs of the Assembly to meet during the main part of the seventyfirst session of the General Assembly?&lt;/p&gt;
+##           &lt;p&gt;Rule 28 of the rules of procedure &lt;/p&gt;
+##           &lt;p&gt;provides that the General Assembly at the beginning &lt;/p&gt;
+##           &lt;p&gt;of each session shall appoint, on the proposal of the &lt;/p&gt;
+##           &lt;p&gt;President, a Credentials Committee consisting of nine &lt;/p&gt;
+##           &lt;p&gt;members.&lt;/p&gt;
+##           &lt;p&gt;Accordingly, it is proposed that, for the seventy-&lt;/p&gt;
+##           &lt;p&gt;first session, the Credentials Committee should consist &lt;/p&gt;
+##           &lt;p&gt;of the following Member States: Cameroon, China, &lt;/p&gt;
+##           &lt;p&gt;Malawi, the Netherlands, Paraguay, the Republic of &lt;/p&gt;
+##           &lt;p&gt;Korea, the Russian Federation, Saint Lucia, and the &lt;/p&gt;
+##           &lt;p&gt;United States of America.&lt;/p&gt;
+##           &lt;p&gt;May I take it that the States that I have just &lt;/p&gt;
+##           &lt;p&gt;mentioned are hereby appointed members of the &lt;/p&gt;
+##           &lt;p&gt;Credentials Committee?&lt;/p&gt;
+##           &lt;p&gt;It was so decided.&lt;/p&gt;
+##           &lt;p&gt;Item 7 of the provisional agenda&lt;/p&gt;
+##           &lt;p&gt;Organization of work of the seventy-first session of &lt;/p&gt;
+##           &lt;p&gt;the General Assembly&lt;/p&gt;
+##           &lt;p&gt;Letter from the Chair of the Committee on &lt;/p&gt;
+##           &lt;p&gt;Conferences (A/71/382)&lt;/p&gt;
+##         &lt;/sp&gt;
+##       &lt;/div&gt;
+##       &lt;div type=&quot;agenda_item&quot; n=&quot;4&quot; what=&quot;&quot; desc=&quot;Organization of work of the seventy-first session of &quot;&gt;
+##         &lt;sp who=&quot;The President&quot; state=&quot;NA&quot; role=&quot;presidency&quot; position=&quot;presidency&quot;&gt;
+##           &lt;speaker&gt;The President:&lt;/speaker&gt;
+##           &lt;p&gt;The Assembly will now turn its &lt;/p&gt;
+##           &lt;p&gt;attention to document A/71/382, which contains a &lt;/p&gt;
+##           &lt;p&gt;letter dated 7 September 2016 from the Chair of the &lt;/p&gt;
+##           &lt;p&gt;Committee on Conferences addressed to the President &lt;/p&gt;
+##           &lt;p&gt;of the General Assembly. Members are aware that, &lt;/p&gt;
+##           &lt;p&gt;pursuant to section 1, paragraph 7, of Assembly &lt;/p&gt;
+##           &lt;p&gt;resolution 40/243, of 18 December 1985, no subsidiary &lt;/p&gt;
+##           &lt;p&gt;organ of the General Assembly should be permitted &lt;/p&gt;
+##           &lt;p&gt;to meet at United Nations Headquarters during the &lt;/p&gt;
+##           &lt;p&gt;main part of a regular session of the Assembly, unless &lt;/p&gt;
+##           &lt;p&gt;explicitly authorized by the Assembly.&lt;/p&gt;
+##           &lt;p&gt;On the strict understanding that meetings would &lt;/p&gt;
+##           &lt;p&gt;have to be accommodated within available facilities and &lt;/p&gt;
+##           &lt;p&gt;services, authorization is thus sought for the following &lt;/p&gt;
+##           &lt;p&gt;subsidiary organs: the United Nations Appeals Tribunal; &lt;/p&gt;
+##           &lt;p&gt;the Committee on Relations with the Host Country; the &lt;/p&gt;
+##           &lt;p&gt;Committee on the Exercise of the Inalienable Rights &lt;/p&gt;
+##           &lt;p&gt;of the Palestinian People; the Executive Board of the &lt;/p&gt;
+##           &lt;p&gt;United Nations Children’s Fund; the United Nations &lt;/p&gt;
+##           &lt;p&gt;System Chief Executives Board for Coordination; the &lt;/p&gt;
+##           &lt;p&gt;Board of Auditors; the Panel of External Auditors of &lt;/p&gt;
+##           &lt;p&gt;the United Nations; the Specialized Agencies; the &lt;/p&gt;
+##           &lt;p&gt;International Atomic Energy Agency; the Independent &lt;/p&gt;
+##           &lt;p&gt;Audit Advisory Committee; and the Committee on &lt;/p&gt;
+##           &lt;p&gt;Conferences itself.&lt;/p&gt;
+##           &lt;p&gt;May I take it that it is the wish of the General &lt;/p&gt;
+##           &lt;p&gt;Assembly to authorize those subsidiary organs of the &lt;/p&gt;
+##           &lt;p&gt;Assembly to meet during the main part of the seventy-&lt;/p&gt;
+##           &lt;p&gt;first session of the General Assembly?&lt;/p&gt;
 ##           &lt;p&gt;It was so decided.&lt;/p&gt;
 ##           &lt;stage type=&quot;end_of_session&quot;&gt;The meeting rose at 4 p.m.&lt;/stage&gt;
 ##         &lt;/sp&gt;
