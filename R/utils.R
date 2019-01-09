@@ -10,7 +10,7 @@
 #' @param end_paragraph_term character vector or expression which should end a paragraph
 #' @param language for language specific heuristics
 #' @export paragraphize
-paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = NULL){
+paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = "de"){
   # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
   # and the next line does not start with a big capital letter, the hyphen is 
   # removed.
@@ -24,7 +24,8 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
     function(i) {
       if (grepl("-$", x[i])){
         if (language == "de") {
-          y <- if (grepl("^[A-Z]|^und|^oder", x[i+1])) x[i] else gsub("-$", "", x[i])
+          y <- if (grepl("^[A-Z]|^und|^oder", x[i+1])) x[i] else gsub("-$", "", x[i]) 
+          y <- if (grepl("^und|^oder", x[i+1])) gsub("-$", "- $", x[i]) # testen, ob das ein Leerzeichen einfügt
         } else {
           y <- if (grepl("^[A-Z]", x[i+1])) x[i] else gsub("-$", "", x[i])
         }
