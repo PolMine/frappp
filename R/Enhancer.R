@@ -128,7 +128,7 @@ Enhancer <- R6Class(
     
     stripTitlesFromName = function(names){
       toRemove <- c(
-        "Dr\\.-Ing\\.\\s*", "Dr\\.\\s*", "Prof\\.\\s*", "Professor\\s*", "Professorin\\s*", "Mag\\.\\s*", "Dipl\\.-Ing\\.\\s*", "MMag\\. Dr\\.\\s*", "Ing\\.\\s*",
+        "Dr\\.-Ing\\.\\s*", "Dr\\.\\s*", "Prof\\.\\s*", "Professor\\s*", "Professorin\\s*",
         "h\\.\\s*c\\.", "Dipl\\.\\s*", "\\(.*?\\)", "\\(", "\\)",
         "\\|", "#"
       )
