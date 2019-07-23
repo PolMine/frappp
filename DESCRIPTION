@@ -13,12 +13,12 @@ Imports:
     R6,
     stringi,
     xml2,
-    trickypdf,
     markdown
 Suggests:
     devtools,
     knitr,
-    pdftools
+    pdftools,
+    trickypdf
 LazyData: yes
 VignetteBuilder: knitr
 License: no distribution without the author's permission

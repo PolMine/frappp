@@ -1,40 +1,26 @@
-#' Parser for Plenary Protocols.
+#' Parser for newspapers.
 #' 
-#' The PlenaryProtocolParser implements a generic workflow to parse protocols
-#' and to generate XML output that complies with the specifications of the Text
-#' Encoding Initiative (TEI).
+#' The NewspaperParser implements a generic workflow to parse XMLs of newspapers
+#' as delivered and to generate XML output that complies with the specifications
+#' of the Text Encoding Initiative (TEI).
 #' 
 #' @section Usage:
-#' PPP <- PlenaryProtocolParser$new()
+#' NPP <- NewspaperParser$new()
 #' 
 #' @examples
-#' PPP <- PlenaryProtocolParser$new()
-#' PPP$speaker_regex <- list(
-#'   pres = list(
-#'     regex = "^(The\\s+President):\\s*(.+)$",
-#'     fn = function(who, txt) c(who = who, role = "presidency", text = txt)
-#'   ),
-#'   sg = list(
-#'     regex = "^(The\\sSecretary-General):\\s*(.+)$",
-#'     fn = function(who, txt) c(who = who, role = "sg", text = txt)
-#'   )
-#' )
-#' PPP$speaker_mismatch <- character()
-#' PPP$agenda_item_regex <- c(any = "^Item\\s+\\d+\\sof.*agenda.*$")
-#' PPP$agenda_item_types <- c(any = "debate")
-#' PPP$stage_regex <- c(end = "^\\s*The\\s+meeting\\s+rose\\s+at\\s+\\d+\\s[ap]\\.m\\.\\s*$")
+#' NPP <- NewspaperParser$new()
+#' NPP$author_regex <- c(any = "^(Von|VON)\\:\\s+.*$")
+#' NPP$agency_regex <- c(any = "DDP")
+#' NPP$page_regex <- c(weiter = "Seite\\s\\d+")
 #' 
-#' PPP$read_file(filename = system.file(package = "frappp", "txt", "UNGA_71_1.txt"))
-#' PPP$add_metadata(
-#'   c(legislativePeriod = "71", sessionNo = "1", date = "2016-09-13",
-#'   publisher = "UN", url = "www.un.org", filetype = "pdf", retrievalDate = "2018-03-15"
+#' NPP$read_file(filename = system.file(package = "frappp", "txt", "UNGA_71_1.txt"))
+#' NPP$add_metadata(
+#'   c(newspaper = "SZ", 
 #'   )
 #' )
-#' PPP$make_header()
-#' PPP$preprocessing()
-#' PPP$split_by_speakers()
-#' PPP$reconstruct_paragraphs()
-#' PPP$make_body()
+#' NPP$make_header()
+#' NPP$preprocessing()
+#' NPP$make_body()
 #' outfile <- tempfile()
 #' cat(as.character(PPP$xml))
 #' @format \code{\link{R6Class}} object.
@@ -188,7 +174,6 @@ PlenaryProtocolParser <- R6Class(
     # fields
 	  id = NULL,
     
-    txt = NULL, # character
 		chunks = NULL, # list
 		xml = NULL, # an xml document (from xml2 package)
 		html = NULL, # character
@@ -221,43 +206,23 @@ PlenaryProtocolParser <- R6Class(
 		},
 		
 		
-		read_file = function(
-		  filename, id = basename(filename),
-		  metadata = c(birthday = as.character(Sys.Date()), package = "frappp", version = as.character(packageVersion("frappp")))
-		  ){
+		read_file = function( # NEW!
+		  filename, 
+		  id = basename(filename),
+		  metadata = c(
+		    birthday = as.character(Sys.Date()),
+		    package = "frappp",
+		    version = as.character(packageVersion("frappp"))
+		  )
+		){
 		  
 		  if (!is.null(self$chunks)) self$chunks <- NULL
 		  if (!is.null(self$xml)) self$xml <- NULL
 		  if (!is.null(self$html)) self$html <- NULL
-		  
+		  self$id <- id
 		  self$metadata <- metadata
 		  
-		  self$txt <- readLines(filename)  
-		  names(self$txt) <- rep(x = "", times = length(self$txt))
-		  self$id <- id
-		  
-		  invisible(self)
-		},
-		
-		
-		preprocessing = function(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))){
-		  
-		  # remove empty lines
-		  emptyLines <- grep("^\\s*$", self$txt)
-		  if (length(emptyLines) > 0) self$txt <- self$txt[-emptyLines]
-		  
-		  # remove leading and trailing whitespace
-		  self$txt <- gsub("^\\s*(.*)\\s*$", "\\1", self$txt)
-		  
-		  # carry out replacements
-		  for (replacement in replacements){
-		    self$txt <- gsub(replacement[1], replacement[2], self$txt)
-		  }
-		  
-		  # execute document-specific preprocessing functions
-		  if (self$id %in% names(self$preprocessing_functions)){
-		    self$txt <- self$preprocessing_functions[[self$id]](self$txt)
-		  }
+		  self$szxml <- xml2::read_xml(filename)  
 		  
 		  invisible(self)
 		},
@@ -270,63 +235,72 @@ PlenaryProtocolParser <- R6Class(
 		  invisible(self)
 		},
 		
-		
-		get_metadata = function(){
-		  warning("needs to be implemented for specific protocol types")
-		},
-		
-		
-		get_debate = function(){
-		  warning("needs to be implemented for specific protocol types")
-		},
-		
 		get_chunk_data = function(){
-		  match_tables <- lapply(
-		    names(self$speaker_regex),
-		    function(speaker_regex_type) {
-		      matches <- stri_match_all_regex(
-		        str = self$txt,
-		        pattern = self$speaker_regex[[speaker_regex_type]][["regex"]]
-		      )
-		      df <- data.frame(do.call(rbind, matches), index = 1L:length(matches), stringsAsFactors = FALSE)
-		      df2 <- df[!is.na(df[,1]),]
-		      if (nrow(df2) > 0) {
-		        match_df <- self$speaker_regex[[speaker_regex_type]][["fn"]](df2)
-		        match_df[["index"]] <- df2[["index"]]
-		        match_df[["regex"]] <- speaker_regex_type
+		  article_nodes <- xml2::xml_find_all(
+		    self$szxml,
+		    xpath = "/artikel-liste/artikel"
+		  )
+		  
+		  article_data <- lapply(
+		    article_nodes,
+		    function(n){
+		      metadata_node <- xml2::xml_find_first(n, xpath = './metadaten')
+		      artikel_id <- xml_text(xml_find_first(metadata_node, xpath = "./artikel-id"))
+		      
+		      quellen_node <- xml2::xml_find_first(metadata_node, xpath = './quelle')
+		      lieferant_id <- xml_text(xml_find_first(quellen_node, xpath = "./lieferant-id"))
+		      quelle_id <- xml_text(xml_find_first(quellen_node, xpath = "./quelle-id"))
+		      quelle_name <- xml_text(xml_find_first(quellen_node, xpath = "./name"))
+		      quelle_datum <- xml_text(xml_find_first(quellen_node, xpath = "./datum"))
+		      quelle_seite_start <- xml_text(xml_find_first(quellen_node, xpath = "./seite-start"))
+		      
+		      urheber_information <- xml_text(xml2::xml_find_first(metadata_node, xpath = './urheberinformation'))
+		      
+		      inhalt_node <- xml2::xml_find_first(n, xpath = './inhalt')
+		      
+		      # there are nodes without content 
+		      if (!class(inhalt_node) == "xml_missing") {
 		        
-		        if (is.numeric(self$speaker_maximum_nchar_name)){
-		          match_df <- match_df[which(nchar(match_df[,"who"]) <= self$speaker_maximum_nchar_name),]
-		        }
+		        titel_liste_node <- xml2::xml_find_first(inhalt_node, xpath = './titel-liste')
+		        rubrik_text <- xml_text(xml_find_first(titel_liste_node, xpath = "./rubrik"))
+		        ressort_text <- xml_text(xml_find_first(titel_liste_node, xpath = "./ressort"))
+		        dachzeile_text <- xml_text(xml_find_first(titel_liste_node, xpath = "./dachzeile"))
+		        titel_text <- xml_text(xml_find_first(titel_liste_node, xpath = "./titel"))
+		        untertitel_text <- xml_text(xml_find_first(titel_liste_node, xpath = "./untertitel"))
 		        
-		        return(match_df)
-		      } else {
-		        return(NULL)
-		      }
+		        
+		        data.frame(artikel_id = artikel_id, lieferant_id = lieferant_id, quelle_id = quelle_id, quelle_name = quelle_name, quelle_datum = quelle_datum, seite_start = quelle_seite_start, urheber_information = urheber_information, rubrik = rubrik_text, ressort = ressort_text, dachzeile = dachzeile_text, titel = titel_text, untertitel = untertitel_text, stringsAsFactors = FALSE)
+		        
+		      } 
 		    }
 		  )
-		  match_table <- do.call(rbind, match_tables)
 		  
-		  if (is.null(match_table)) warning("match_table is NULL - none of the regular expression matches")
-
-		  checked_matches <- which(!match_table[["who"]] %in% self$speaker_mismatch)
-		  if (length(checked_matches) != nrow(match_table)) match_table <- match_table[checked_matches,]
+		  self$chunk_data <- do.call(rbind, article_data)
 		  
-		  match_table <- match_table[order(match_table[["index"]]),]
-
-		  # remove multiple matches for regexes
-		  self$chunk_data <- plyr::ddply(.data = match_table, .variables = "index", .fun = function(df){
-		    if (nrow(df) > 1){
-		      first_regex_matched <- names(self$speaker_regex)[which(names(self$speaker_regex) %in% df[["regex"]])][1]
-		      df <- df[which(df[["regex"]] == first_regex_matched),]
-		      return(df[1,])
-		    } else {
-		      return(df)
+		  chunks <- lapply(
+		    article_nodes,
+		    function(n){
+		      p_list <- lapply(
+		        xml2::xml_find_all(n, xpath = "./inhalt/text/absatz|./inhalt/text/abbildung/beschriftung"),
+		        function(p){
+		          return(xml_text(p))
+		        }
+		      )
+		      unlist(p_list)
 		    }
-		  })
+		  )
+		  
+		  empty_chunks <- which(sapply(lapply(chunks, is.na), any) == TRUE)
+		  if (length(empty_chunks) > 0){
+		    for (i in rev(empty_chunks)){
+		      self$chunk_data <- self$chunk_data[-i,]
+		      chunks[[i]] <- NULL
+		    }
+		  }
+		  
+		  self$chunks <- chunks
 		  invisible(self)
 		},
-		
 		
 		detect_speaker_regex_matches = function(){
 		  self$txt <- paste_and_match(
@@ -506,7 +480,7 @@ PlenaryProtocolParser <- R6Class(
 
 		  # The speaker call is not necessarily present (e.g. when chunks are extracted from XML)
 		  if (grepl(":", lines[1])){
-		    split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
+		    split <- stringi::stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
 		    lines[1] <- split[1,3]
 		    xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
 		  }
