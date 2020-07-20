@@ -186,534 +186,547 @@ PlenaryProtocolParser <- R6Class(
   public = list(
     
     # fields
-	  id = NULL,
+    id = NULL,
     
     txt = NULL, # character
-		chunks = NULL, # list
-		xml = NULL, # an xml document (from xml2 package)
-		html = NULL, # character
-		
-		metadata = NULL, # list
-		chunk_data = NULL,
-		xpath = NULL, # list
-
-		preprocessing_functions = NULL, # list
-		
-		stage_regex = NULL,
-		stage_match_n_lines = NULL,
-		stage_mismatch_regex = NULL,
-
-		speaker_regex = NULL, # list
-		speaker_mismatch = NULL, # character
-		speaker_maximum_nchar_name = NULL,
-		speaker_match_n_lines = NULL,
-		
-		agenda_item_regex = NULL, # list
-		agenda_item_types = NULL, # character
-		agenda_item_mismatch = NULL, # list
-		agenda_item_maximum_nchar_desc = NULL, # integer
-		
-		# methods 
-		
-		initialize = function(xpath = teiXpath){
-		  self$xpath = xpath
-		  invisible(self)
-		},
-		
-		
-		read_file = function(
-		  filename, id = basename(filename),
-		  metadata = c(birthday = as.character(Sys.Date()), package = "frappp", version = as.character(packageVersion("frappp")))
-		  ){
-		  
-		  if (!is.null(self$chunks)) self$chunks <- NULL
-		  if (!is.null(self$xml)) self$xml <- NULL
-		  if (!is.null(self$html)) self$html <- NULL
-		  
-		  self$metadata <- metadata
-		  
-		  self$txt <- readLines(filename)  
-		  names(self$txt) <- rep(x = "", times = length(self$txt))
-		  self$id <- id
-		  
-		  invisible(self)
-		},
-		
-		
-		preprocessing = function(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))){
-		  
-		  # remove empty lines
-		  emptyLines <- grep("^\\s*$", self$txt)
-		  if (length(emptyLines) > 0) self$txt <- self$txt[-emptyLines]
-		  
-		  # remove leading and trailing whitespace
-		  self$txt <- gsub("^\\s*(.*)\\s*$", "\\1", self$txt)
-		  
-		  # carry out replacements
-		  for (replacement in replacements){
-		    self$txt <- gsub(replacement[1], replacement[2], self$txt)
-		  }
-		  
-		  # execute document-specific preprocessing functions
-		  if (self$id %in% names(self$preprocessing_functions)){
-		    self$txt <- self$preprocessing_functions[[self$id]](self$txt)
-		  }
-		  
-		  invisible(self)
-		},
-		
-		add_metadata = function(metadata){
-		  if (is.null(names(metadata))) stop("the input character vector needs to be named")
-		  if (any(names(metadata) == "")) stop("all elements of the character vector need to be named")
-		  if (length(unique(names(metadata))) != length(names(metadata))) stop("all names of the character vectors neet to be unique")
-		  self$metadata <- c(self$metadata, metadata)
-		  invisible(self)
-		},
-		
-		
-		get_metadata = function(){
-		  warning("needs to be implemented for specific protocol types")
-		},
-		
-		
-		get_debate = function(){
-		  warning("needs to be implemented for specific protocol types")
-		},
-		
-		get_chunk_data = function(){
-		  match_tables <- lapply(
-		    names(self$speaker_regex),
-		    function(speaker_regex_type) {
-		      matches <- stri_match_all_regex(
-		        str = self$txt,
-		        pattern = self$speaker_regex[[speaker_regex_type]][["regex"]]
-		      )
-		      df <- data.frame(do.call(rbind, matches), index = 1L:length(matches), stringsAsFactors = FALSE)
-		      df2 <- df[!is.na(df[,1]),]
-		      if (nrow(df2) > 0) {
-		        match_df <- self$speaker_regex[[speaker_regex_type]][["fn"]](df2)
-		        match_df[["index"]] <- df2[["index"]]
-		        match_df[["regex"]] <- speaker_regex_type
-		        
-		        if (is.numeric(self$speaker_maximum_nchar_name)){
-		          match_df <- match_df[which(nchar(match_df[,"who"]) <= self$speaker_maximum_nchar_name),]
-		        }
-		        
-		        return(match_df)
-		      } else {
-		        return(NULL)
-		      }
-		    }
-		  )
-		  match_table <- do.call(rbind, match_tables)
-		  
-		  if (is.null(match_table)) warning("match_table is NULL - none of the regular expression matches")
-
-		  checked_matches <- which(!match_table[["who"]] %in% self$speaker_mismatch)
-		  if (length(checked_matches) != nrow(match_table)) match_table <- match_table[checked_matches,]
-		  
-		  match_table <- match_table[order(match_table[["index"]]),]
-
-		  # remove multiple matches for regexes
-		  self$chunk_data <- plyr::ddply(.data = match_table, .variables = "index", .fun = function(df){
-		    if (nrow(df) > 1){
-		      first_regex_matched <- names(self$speaker_regex)[which(names(self$speaker_regex) %in% df[["regex"]])][1]
-		      df <- df[which(df[["regex"]] == first_regex_matched),]
-		      return(df[1,])
-		    } else {
-		      return(df)
-		    }
-		  })
-		  invisible(self)
-		},
-		
-		
-		detect_speaker_regex_matches = function(){
-		  self$txt <- paste_and_match(
-		    x = self$txt, regex = sapply(self$speaker_regex, function(x) x[["regex"]]),
-		    n_lines = if (is.null(self$speaker_match_n_lines)) 1L else self$speaker_match_n_lines,
-		    mismatch = self$speaker_mismatch
-		    )
-		  invisible(self)
-		},
-		
-		
-		detect_stage_regex_matches = function(){
-		  self$chunks <- lapply(
-		    self$chunks,
-		    function(chunk){
-		      paste_and_match(
-		        x = chunk, regex = self$stage_regex,
-		        n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
-		        mismatch = self$stage_mismatch_regex
-		      )
-		    }
-		  )
-		  invisible(self)
-		},
-		
-		
-		split_by_speakers = function(){
-		  
-		  # The first step is to get the indices of the vector where a call to a speaker occurs.
-		  # We iterate through the list provided by the 'speaker_regex' field, and get the
-		  # index positions. Two checks are performed: (a) If the match for the name of the
-		  # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
-		  # included in the field 'speaker_mismatch' are discarded, too.
-		  
-		  
-		  self$detect_speaker_regex_matches()
-		  names(self$txt) <- rep("", times = length(self$txt))
-		  self$get_chunk_data()
-		  
-
-		  # Intermediate step: We get the indices with the start paragraphs from the
-		  # data.frame in chunk_data. We ensure that the last element of the vector
-		  # is the last line in self$txt
-		  start_paras <- self$chunk_data[["index"]]
-		  if (start_paras[length(start_paras)] != length(self$txt)){
-		    start_paras <- c(start_paras, length(self$txt))
-		  }
-		  
-		  # Finally, the raw character vector is chunked, i.e. it is turned into a list
-		  # with sections of speech of one speaker that has been identified.
-		  paras_speeches_factor <- cut(
-		    1L:length(self$txt), breaks = start_paras,
-		    include.lowest = TRUE, right = FALSE
-		    )
-		  self$chunks <- split(self$txt, paras_speeches_factor)
-		  names(self$chunks) <- self$chunk_data[["regex"]][1L:length(self$chunks)]
-	
-		  invisible(self)
-		},
-
-		reconstruct_paragraphs = function(exclude = NULL, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = NULL){
-		  # The general scheme is that we iterate through the chunks. Thus there 
-		  # is a helper function '.chunkProcessor' to handle the individual chunks.
-		  .processor <- function(chunk){
-		    if (length(chunk) == 1) return(chunk)
-		    # Each chunk is turned into a list of character vectors. The assumption here is
-		    # that concatenating paragraphs is not performed for interjections.
-		    stage <- which(names(chunk) != "")
-		    cutPoints <- unique(c(1, stage - 1, stage, length(chunk)))
-		    cutPoints <- cutPoints[order(cutPoints)]
-		    sections <- cut(
-		      x = 1:length(chunk), breaks = cutPoints,
-		      include.lowest = TRUE, right = TRUE
-		    )
-		    subchunks <- split(chunk, sections)
-		    
-		    # iterate through the list of speech and interjections.
-		    retval <- lapply(subchunks, function(x){
-		      y <- paragraphize(x = x, threshold = threshold, start_paragraph_term = start_paragraph_term, end_paragraph_term = end_paragraph_term, language = language)
-		      if (is.null(names(y))) names(y) <- rep("", times = length(y))
-		      y
-		    })
-		    names(retval) <- NULL
-		    return( unlist(retval) )
-		  }
-		  if (!is.null(exclude)) {
-		      self$chunks[which(names(self$chunks) != exclude)] <- lapply(self$chunks[which(names(self$chunks) != exclude)], .processor)
-		      } else { 
-		        self$chunks<- lapply(self$chunks, .processor)
-		      }
-		      
-		  invisible(self)
-		},
-		
-		
-		get_agenda_item_calls = function(){
-		  
-		  chunks_pres <- which(names(self$chunks) == "pres")
-
-		  matchesForTopicCall <- lapply(
-		    
-		    chunks_pres,
-		    
-		    function(i){
-		      chunk <- self$chunks[[i]]
-		      
-		      # get the lines where one of agenda item regexes matches
-		      match_agenda_item_call <- unique(unlist(lapply(self$agenda_item_regex, function(regex) grep(regex, chunk))))
-		      if (length(match_agenda_item_call) == 0) return( NULL )
-		      
-		      # remove the matching lines that are known to be mismatches
-		      if (length(self$agenda_item_mismatch) > 0) mismatches <- self$agenda_item_mismatch[[self$id]] else mismatches <- NULL
-		      if (!is.null(mismatches)){
-		        agenda_item_mismatch_position <- unique(unlist(lapply(mismatches, function(mismatch) grep(mismatch, chunk))))
-		        if (length(agenda_item_mismatch_position) > 0){
-		          match_agenda_item_call <- match_agenda_item_call[-which(match_agenda_item_call == agenda_item_mismatch_position)]
-		        }
-		      }
-		      if (length(match_agenda_item_call) == 0) return( NULL ) # stop things if nothing left
-		      
-		      match_position <- max(match_agenda_item_call) # apply only last call of an agenda item
-		      if (match_position > length(chunk)) return( NULL ) # no idea how it can happen, but it happened 
-		      
-		      # which of the regexes did the hit?
-		      match_regex_logical <- sapply(self$agenda_item_regex, function(regex) grepl(regex, chunk[match_position]))
-		      regex_name <- names(match_regex_logical)[which(match_regex_logical == TRUE)]
-		      
-		      if (any(regex_name != "any")){
-		        agenda_item_type <- regex_name[which(regex_name != "any")][1]
-		        agenda_item_desc <- unname(self$agenda_item_types[agenda_item_type])
-		      } else {
-		        agenda_item_title <- if (match_position < length(chunk)) chunk[match_position + 1] else agenda_item_title <- chunk[match_position]
-		        agenda_item_type_match <- sapply(self$agenda_item_types, function(regex) grepl(regex, agenda_item_title))
-		        agenda_item_type <- paste(names(agenda_item_type_match[which(agenda_item_type_match == TRUE)]), collapse = "|")   
-		        if (!is.null(self$agenda_item_maximum_nchar_desc)){
-		          agenda_item_desc <- if (nchar(agenda_item_title) > self$agenda_item_maximum_nchar_desc){
-		            paste(substr(agenda_item_title, 1, self$agenda_item_maximum_nchar_desc), "...", sep = " ")
-		          } else {
-		            agenda_item_title
-		          }
-		        } else {
-		          
-		          agenda_item_desc <- agenda_item_title
-		            
-		        }
-		      }
-		      data.frame(
-		        chunk = i, position = match_position, type = agenda_item_type, desc = agenda_item_desc,
-		        stringsAsFactors = FALSE
-		        )
-		    }
-		  )
-		  topicCallDf <- do.call(rbind, matchesForTopicCall)
-		  invisible(topicCallDf)
-		},
-		
-		
-		make_speaker_node = function(chunk_no, parent){
-		  lines <- self$chunks[[chunk_no]]
-		  
-		  # remove empty lines, if necessary
-		  empty_lines <- grep("^\\s*$", lines)
-		  if (length(empty_lines) > 0) lines <- lines[-empty_lines]  
-		  
-		  lines <- gsub("\\s+", " ", lines)
-		  
-		  type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunk_no]])
-		  
-		  speakerAttrs <- unlist(self$chunk_data[chunk_no,])
-		  if ("regex" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "regex")]
-		  if ("index" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "index")]
-		  if ("text" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "text")]
-		  Encoding(speakerAttrs) <- "UTF-8" # just to be sure
-		  
-		  newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
-		  xml_attrs(newSpeakerNode) <- speakerAttrs
-
-		  # The speaker call is not necessarily present (e.g. when chunks are extracted from XML)
-		  if (grepl(":", lines[1])){
-		    split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
-		    lines[1] <- split[1,3]
-		    xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
-		  }
-		  
-		  lapply(
-		    1L:length(lines),
-		    function(i){
-		      if (!is.null(names(lines))){
-		        # add element for interjection, if respective regex matches
-		        if (names(lines)[i] != ""){
-		          xml_add_child(newSpeakerNode, .value = "stage", type = names(lines)[i], lines[i])
-		        } else if (lines[i] != ""){
-		          xml_add_child(newSpeakerNode, .value = "p", lines[i])
-		        }
-		      } else {
-		        if (lines[i] != "") xml_add_child(newSpeakerNode, .value = "p", lines[i])
-		      }
-		    }
-		  )
-		  invisible(type)
-		},
-
-		
-		make_speaker_nodes = function(chunk_nos, parent){
-		  lapply(chunk_nos, function(i) self$make_speaker_node(chunk_no = i, parent = parent))
-		  invisible(self)
-		},
-		
-		
-		make_header = function(template = system.file("xml", "teiTemplate.xml", package = "frappp")){
-		  self$xml <- xml2::read_xml(template)
-		  lapply(
-		    names(self$xpath),
-		    function(x){
-		      if (x %in% names(self$metadata)){
-		        teiNode <- xml2::xml_find_first(x = self$xml, xpath = self$xpath[[x]])
-		        xml2::xml_text(teiNode) <- as.character(self$metadata[[x]])
-		      }
-		    })
-		  invisible(self)
-		},
-		
-		
-		make_body = function(){
-		  bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
-		  if (is.null(self$agenda_item_regex)){ # annotate agenda items if regex present
-		    self$make_speaker_nodes(chunk_nos = 1:length(self$chunks), parent = bodyNode)
-		  } else {
-		    topicCallDf <- self$get_agenda_item_calls()
-		    if (is.null(topicCallDf)){
-		      agendaItemChunks <- list(1L:length(self$chunks))
-		      topicCallDf <- data.frame(chunk = 1, position = NA, type = NA, desc = NA)
-		    } else {
-		      topicCallChunks <- topicCallDf[["chunk"]]
-		      # to include the last para in the last topic called
-		      if (max(topicCallChunks) != length(self$chunks)){
-		        topicCallChunks <- unique(c(topicCallChunks, length(self$chunks))) # unique may be unnecessary
-		      }
-		      if (length(self$chunks) > 1L){
-		        howToCut <- cut(x = 1L:length(self$chunks), breaks = topicCallChunks, include.lowest = TRUE) # will return factor
-		        howToCutInt <- as.integer(howToCut)
-		        howToCutInt[which(is.na(howToCutInt))] <- 0L
-		        if (0L %in% howToCutInt){
-		          topicCallDf <- rbind(data.frame(chunk = 1, position = NA, type = NA, desc = NA), topicCallDf)
-		        }
-		      } else {
-		        # cut will not work if the number of chunks is 1 and the chunk includes an agenda item call
-		        howToCutInt <- 1L
-		      }
-		      agendaItemChunks <- split(1L:length(self$chunks), howToCutInt)
-		    }
-		    lapply(
-		      1L:length(agendaItemChunks),
-		      function(i){
-		        newAgendaItemNode <- xml_add_child(
-		          .x = bodyNode, .value = "div", type = "agenda_item", 
-		          n = names(agendaItemChunks)[i], what = unname(topicCallDf[i,"type"]), desc = unname(topicCallDf[i,"desc"])
-		        )
-		        self$make_speaker_nodes(chunk_nos = agendaItemChunks[[i]], parent = newAgendaItemNode)
-		      }
-		    )
-		  }
-		  invisible(self)
-		},
-		
-		
-		xmlify = function(){
-		  self$preprocessing() # remove leading and and trailing spaces
-		  self$get_metadata() # returns a list with sessionNo, lp, date
-		  self$split_by_speakers()
-		  # self$concatenateMultilineInterjections()
-		  self$reconstruct_paragraphs()
-		  self$make_header()
-		  self$make_body()
-		  invisible(self)
-		},
-		
-		browse_xml = function(){
-		  tmpfile <- tempfile()
-		  writeLines(text = as.character(self$xml), con = tmpfile)
-		  browseURL(url = tmpfile)
-		},
-		
-		save_xml = function(filename){
-		  writeLines(text = as.character(self$xml), con = filename)
-		},
-		
-		browse_txt = function(){
-		  body <- sprintf("<p>%s</p>", self$txt)
-		  html <- sprintf("<html><body>%s</body></html>", body)
-		  tmpfile <- tempfile(fileext = ".html")
-		  writeLines(text = html, con = tmpfile)
-		  browseURL(url = tmpfile)
-		},
-		
-		browse_html = function(){
-		  doc <- self$as_html()
-		  htmlfile <- tempfile(fileext = ".html")
-		  cat(doc, file = htmlfile)
-		  browseURL(htmlfile)
-		},
-
-		regex_context_in_chunks = function(regex, nchar_context = 100, verbose = FALSE){
-		  
-		  self$preprocessing() # remove leading and and trailing spaces
-		  self$get_metadata() # returns a list with sessionNo, lp, date
-		  self$get_debate()
-		  self$split_by_speakers()
-		  self$concatenateMultilineInterjections() # in package ctk.plpr
-		  self$reconstruct_paragraphs()
-		  regexMatches <- lapply(
-		    1:length(self$chunks),
-		    function(i) {
-		      chunk <- self$chunks[[i]]
-		      role <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[i])
-		      matches <- ctk:::.regexContext(
-		        chunk,
-		        param = list(asText = TRUE, regex = regex, ncharContext = nchar_context)
-		      )
-		      if (nrow(matches) > 0){
-		        if (i == length(Protocol$chunks)){
-		          return(NULL)
-		        } else {
-		          return(data.frame(role = role, chunk_no = i, matches))  
-		        }
-		      } else {
-		        return(NULL)
-		      }
-		    })
-		  regexMatchDf <- do.call(rbind, regexMatches)
-		  if (!is.null(regexMatchDf)){
-		    regexMatchDf <- subset(regexMatchDf, !is.na(regexMatches))
-		    regexMatchDf[,"filename"] <- filename    
-		  }
-		  regexMatchDf  
-		},
-		
-		as_html = function(){
-		  data <- lapply(self$xpath, function(xpath) xml_text(xml_find_all(self$xml, xpath = xpath)[[1]]))
-		  protocolTitle <- sprintf(
-		    "# %s %s/%s (%s)",
-		    data$title, data$legislativePeriod, data$sessionNo, data$date
-		  )
-		  debatesList <- lapply(
-		    xml_find_all(self$xml, xpath = '//div[@type="agenda_item"]'),
-		    function(topicNode){
-		      debateTextList <- lapply(
-		        xml_children(topicNode),
-		        function(topicNodeChild){
-		          if (xml_name(topicNodeChild) == "sp"){
-		            speechMarkdownList <- lapply(
-		              xml_children(topicNodeChild),
-		              function(speakerNodeChild){
-		                if (xml_name(speakerNodeChild) == "speaker"){
-		                  return("")
-		                } else if (xml_name(speakerNodeChild) == "p"){
-		                  return(xml_text(speakerNodeChild))
-		                } else if (xml_name(speakerNodeChild) == "stage"){
-		                  return(paste("\n>", xml_text(speakerNodeChild), "\n", collapse=" "))
-		                }
-		              })
-		            speechMarkdown <- paste(speechMarkdownList, collapse = "\n\n")
-		            speakerCall <- paste0(xml_attrs(topicNodeChild), collapse = "/")
-		            speakerMarkdown <- paste("**", speakerCall, "**", sep = "")
-		            speech <- paste(speakerMarkdown, speechMarkdown, sep=": ")
-		            return(speech)
-		          } else if (xmlName(topicNodeChild) == "stage"){
-		            return(paste("*", xml_text(topicNodeChild), "*"))
-		          }
-		        })
-		      debateText <- paste(debateTextList, collapse = "\n\n")
-		      headingAgendaItem <- paste(
-		        "## Agenda Item ",
-		        xml_attrs(topicNode)["n"], ': "',
-		        xml_attrs(topicNode)["desc"], '" (<i>',
-		        xml_attrs(topicNode)["what"], "</i>) ##",
-		        sep = "")
-		      paste(headingAgendaItem, debateText, sep="\n\n")
-		    })
-		  protocolText <- paste(unlist(debatesList), sep = "\n\n", collapse = "\n\n")
-		  protocolMarkdown <- paste(protocolTitle, protocolText, sep = "\n\n")
-		  protocolHtml <- markdown::markdownToHTML(text = protocolMarkdown)  
-		  protocolHtml <- gsub("<.?ul>", "", protocolHtml)
-		  protocolHtml <- gsub("<li>", "<p>", protocolHtml)
-		  protocolHtml <- gsub("</li>", "</p>", protocolHtml)
-		  protocolHtml
-		}
-		
+    chunks = NULL, # list
+    xml = NULL, # an xml document (from xml2 package)
+    html = NULL, # character
+    
+    metadata = NULL, # list
+    chunk_data = NULL,
+    xpath = NULL, # list
+    
+    preprocessing_functions = NULL, # list
+    
+    stage_regex = NULL,
+    stage_match_n_lines = NULL,
+    stage_mismatch_regex = NULL,
+    
+    speaker_regex = NULL, # list
+    speaker_mismatch = NULL, # character
+    speaker_maximum_nchar_name = NULL,
+    speaker_match_n_lines = NULL,
+    
+    agenda_item_regex = NULL, # list
+    agenda_item_types = NULL, # character
+    agenda_item_mismatch = NULL, # list
+    agenda_item_maximum_nchar_desc = NULL, # integer
+    
+    # methods 
+    
+    initialize = function(xpath = teiXpath){
+      self$xpath = xpath
+      invisible(self)
+    },
+    
+    
+    read_file = function(
+      filename, id = basename(filename),
+      metadata = c(birthday = as.character(Sys.Date()), package = "frappp", version = as.character(packageVersion("frappp")))
+    ){
+      
+      if (!is.null(self$chunks)) self$chunks <- NULL
+      if (!is.null(self$xml)) self$xml <- NULL
+      if (!is.null(self$html)) self$html <- NULL
+      
+      self$metadata <- metadata
+      
+      self$txt <- readLines(filename)  
+      names(self$txt) <- rep(x = "", times = length(self$txt))
+      self$id <- id
+      
+      invisible(self)
+    },
+    
+    
+    preprocessing = function(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))){
+      
+      # remove empty lines
+      emptyLines <- grep("^\\s*$", self$txt)
+      if (length(emptyLines) > 0) self$txt <- self$txt[-emptyLines]
+      
+      # remove leading and trailing whitespace
+      self$txt <- gsub("^\\s*(.*)\\s*$", "\\1", self$txt)
+      
+      # carry out replacements
+      for (replacement in replacements){
+        self$txt <- gsub(replacement[1], replacement[2], self$txt)
+      }
+      
+      # execute document-specific preprocessing functions
+      if (self$id %in% names(self$preprocessing_functions)){
+        self$txt <- self$preprocessing_functions[[self$id]](self$txt)
+      }
+      
+      invisible(self)
+    },
+    
+    add_metadata = function(metadata){
+      if (is.null(names(metadata))) stop("the input character vector needs to be named")
+      if (any(names(metadata) == "")) stop("all elements of the character vector need to be named")
+      if (length(unique(names(metadata))) != length(names(metadata))) stop("all names of the character vectors neet to be unique")
+      self$metadata <- c(self$metadata, metadata)
+      invisible(self)
+    },
+    
+    
+    get_metadata = function(){
+      warning("needs to be implemented for specific protocol types")
+    },
+    
+    
+    get_debate = function(){
+      warning("needs to be implemented for specific protocol types")
+    },
+    
+    get_chunk_data = function(){
+      match_tables <- lapply(
+        names(self$speaker_regex),
+        function(speaker_regex_type) {
+          matches <- stri_match_all_regex(
+            str = self$txt,
+            pattern = self$speaker_regex[[speaker_regex_type]][["regex"]]
+          )
+          df <- data.frame(do.call(rbind, matches), index = 1L:length(matches), stringsAsFactors = FALSE)
+          df2 <- df[!is.na(df[,1]),]
+          if (nrow(df2) > 0) {
+            match_df <- self$speaker_regex[[speaker_regex_type]][["fn"]](df2)
+            match_df[["index"]] <- df2[["index"]]
+            match_df[["regex"]] <- speaker_regex_type
+            
+            if (is.numeric(self$speaker_maximum_nchar_name)){
+              match_df <- match_df[which(nchar(match_df[,"who"]) <= self$speaker_maximum_nchar_name),]
+            }
+            
+            return(match_df)
+          } else {
+            return(NULL)
+          }
+        }
+      )
+      match_table <- do.call(rbind, match_tables)
+      
+      if (is.null(match_table)) warning("match_table is NULL - none of the regular expression matches")
+      
+      checked_matches <- which(!match_table[["who"]] %in% self$speaker_mismatch)
+      if (length(checked_matches) != nrow(match_table)) match_table <- match_table[checked_matches,]
+      
+      match_table <- match_table[order(match_table[["index"]]),]
+      
+      # remove multiple matches for regexes
+      self$chunk_data <- plyr::ddply(.data = match_table, .variables = "index", .fun = function(df){
+        if (nrow(df) > 1){
+          first_regex_matched <- names(self$speaker_regex)[which(names(self$speaker_regex) %in% df[["regex"]])][1]
+          df <- df[which(df[["regex"]] == first_regex_matched),]
+          return(df[1,])
+        } else {
+          return(df)
+        }
+      })
+      invisible(self)
+    },
+    
+    
+    detect_speaker_regex_matches = function(){
+      self$txt <- paste_and_match(
+        x = self$txt, regex = sapply(self$speaker_regex, function(x) x[["regex"]]),
+        n_lines = if (is.null(self$speaker_match_n_lines)) 1L else self$speaker_match_n_lines,
+        mismatch = self$speaker_mismatch
+      )
+      invisible(self)
+    },
+    
+    
+    detect_stage_regex_matches = function(){
+      self$chunks <- lapply(
+        self$chunks,
+        function(chunk){
+          paste_and_match(
+            x = chunk, regex = self$stage_regex,
+            n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
+            mismatch = self$stage_mismatch_regex
+          )
+        }
+      )
+      invisible(self)
+    },
+    
+    
+    split_by_speakers = function(){
+      
+      # The first step is to get the indices of the vector where a call to a speaker occurs.
+      # We iterate through the list provided by the 'speaker_regex' field, and get the
+      # index positions. Two checks are performed: (a) If the match for the name of the
+      # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
+      # included in the field 'speaker_mismatch' are discarded, too.
+      
+      
+      self$detect_speaker_regex_matches()
+      names(self$txt) <- rep("", times = length(self$txt))
+      self$get_chunk_data()
+      
+      
+      # Intermediate step: We get the indices with the start paragraphs from the
+      # data.frame in chunk_data. We ensure that the last element of the vector
+      # is the last line in self$txt
+      start_paras <- self$chunk_data[["index"]]
+      if (start_paras[length(start_paras)] != length(self$txt)){
+        start_paras <- c(start_paras, length(self$txt))
+      }
+      
+      # Finally, the raw character vector is chunked, i.e. it is turned into a list
+      # with sections of speech of one speaker that has been identified.
+      paras_speeches_factor <- cut(
+        1L:length(self$txt), breaks = start_paras,
+        include.lowest = TRUE, right = FALSE
+      )
+      self$chunks <- split(self$txt, paras_speeches_factor)
+      names(self$chunks) <- self$chunk_data[["regex"]][1L:length(self$chunks)]
+      
+      invisible(self)
+    },
+    
+    reconstruct_paragraphs = function(exclude = NULL, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = NULL){
+      # The general scheme is that we iterate through the chunks. Thus there 
+      # is a helper function '.chunkProcessor' to handle the individual chunks.
+      .processor <- function(chunk){
+        if (length(chunk) == 1) return(chunk)
+        # Each chunk is turned into a list of character vectors. The assumption here is
+        # that concatenating paragraphs is not performed for interjections.
+        stage <- which(names(chunk) != "")
+        
+        # this fails if the length of the lines of the chunk which are not
+        # interjections equals one. Then, the lines aren't concatenated but the
+        # name of the interjection is removed. In this case, just return the
+        # chunk as above.
+        
+        if (length(chunk) - length(stage) == 1) return(chunk)
+        
+        cutPoints <- unique(c(1, stage - 1, stage, length(chunk)))
+        cutPoints <- cutPoints[order(cutPoints)]
+        
+          # otherwise use the cut points to split the chunk (this fails if the
+          # length of the chunk is equal to the length of the cut points)
+          
+          sections <- cut(
+            x = 1:length(chunk), breaks = cutPoints,
+            include.lowest = TRUE, right = TRUE
+          )
+        
+        subchunks <- split(chunk, sections)
+        
+        # iterate through the list of speech and interjections.
+        retval <- lapply(subchunks, function(x){
+          y <- paragraphize(x = x, threshold = threshold, start_paragraph_term = start_paragraph_term, end_paragraph_term = end_paragraph_term, language = language)
+          if (is.null(names(y))) names(y) <- rep("", times = length(y))
+          y
+        })
+        names(retval) <- NULL
+        return( unlist(retval) )
+      }
+      if (!is.null(exclude)) {
+        self$chunks[which(names(self$chunks) != exclude)] <- lapply(self$chunks[which(names(self$chunks) != exclude)], .processor)
+      } else { 
+        self$chunks<- lapply(self$chunks, .processor)
+      }
+      
+      invisible(self)
+    },
+    
+    
+    get_agenda_item_calls = function(){
+      
+      chunks_pres <- which(names(self$chunks) == "pres")
+      
+      matchesForTopicCall <- lapply(
+        
+        chunks_pres,
+        
+        function(i){
+          chunk <- self$chunks[[i]]
+          
+          # get the lines where one of agenda item regexes matches
+          match_agenda_item_call <- unique(unlist(lapply(self$agenda_item_regex, function(regex) grep(regex, chunk))))
+          if (length(match_agenda_item_call) == 0) return( NULL )
+          
+          # remove the matching lines that are known to be mismatches
+          if (length(self$agenda_item_mismatch) > 0) mismatches <- self$agenda_item_mismatch[[self$id]] else mismatches <- NULL
+          if (!is.null(mismatches)){
+            agenda_item_mismatch_position <- unique(unlist(lapply(mismatches, function(mismatch) grep(mismatch, chunk))))
+            if (length(agenda_item_mismatch_position) > 0){
+              match_agenda_item_call <- match_agenda_item_call[-which(match_agenda_item_call == agenda_item_mismatch_position)]
+            }
+          }
+          if (length(match_agenda_item_call) == 0) return( NULL ) # stop things if nothing left
+          
+          match_position <- max(match_agenda_item_call) # apply only last call of an agenda item
+          if (match_position > length(chunk)) return( NULL ) # no idea how it can happen, but it happened 
+          
+          # which of the regexes did the hit?
+          match_regex_logical <- sapply(self$agenda_item_regex, function(regex) grepl(regex, chunk[match_position]))
+          regex_name <- names(match_regex_logical)[which(match_regex_logical == TRUE)]
+          
+          if (any(regex_name != "any")){
+            agenda_item_type <- regex_name[which(regex_name != "any")][1]
+            agenda_item_desc <- unname(self$agenda_item_types[agenda_item_type])
+          } else {
+            agenda_item_title <- if (match_position < length(chunk)) chunk[match_position + 1] else agenda_item_title <- chunk[match_position]
+            agenda_item_type_match <- sapply(self$agenda_item_types, function(regex) grepl(regex, agenda_item_title))
+            agenda_item_type <- paste(names(agenda_item_type_match[which(agenda_item_type_match == TRUE)]), collapse = "|")   
+            if (!is.null(self$agenda_item_maximum_nchar_desc)){
+              agenda_item_desc <- if (nchar(agenda_item_title) > self$agenda_item_maximum_nchar_desc){
+                paste(substr(agenda_item_title, 1, self$agenda_item_maximum_nchar_desc), "...", sep = " ")
+              } else {
+                agenda_item_title
+              }
+            } else {
+              
+              agenda_item_desc <- agenda_item_title
+              
+            }
+          }
+          data.frame(
+            chunk = i, position = match_position, type = agenda_item_type, desc = agenda_item_desc,
+            stringsAsFactors = FALSE
+          )
+        }
+      )
+      topicCallDf <- do.call(rbind, matchesForTopicCall)
+      invisible(topicCallDf)
+    },
+    
+    
+    make_speaker_node = function(chunk_no, parent){
+      lines <- self$chunks[[chunk_no]]
+      
+      # remove empty lines, if necessary
+      empty_lines <- grep("^\\s*$", lines)
+      if (length(empty_lines) > 0) lines <- lines[-empty_lines]  
+      
+      lines <- gsub("\\s+", " ", lines)
+      
+      type <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[[chunk_no]])
+      
+      speakerAttrs <- unlist(self$chunk_data[chunk_no,])
+      if ("regex" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "regex")]
+      if ("index" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "index")]
+      if ("text" %in% names(speakerAttrs)) speakerAttrs <- speakerAttrs[-which(names(speakerAttrs) == "text")]
+      Encoding(speakerAttrs) <- "UTF-8" # just to be sure
+      
+      newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
+      xml_attrs(newSpeakerNode) <- speakerAttrs
+      
+      # The speaker call is not necessarily present (e.g. when chunks are extracted from XML)
+      if (grepl(":", lines[1])){
+        split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
+        lines[1] <- split[1,3]
+        xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
+      }
+      
+      lapply(
+        1L:length(lines),
+        function(i){
+          if (!is.null(names(lines))){
+            # add element for interjection, if respective regex matches
+            if (names(lines)[i] != ""){
+              xml_add_child(newSpeakerNode, .value = "stage", type = names(lines)[i], lines[i])
+            } else if (lines[i] != ""){
+              xml_add_child(newSpeakerNode, .value = "p", lines[i])
+            }
+          } else {
+            if (lines[i] != "") xml_add_child(newSpeakerNode, .value = "p", lines[i])
+          }
+        }
+      )
+      invisible(type)
+    },
+    
+    
+    make_speaker_nodes = function(chunk_nos, parent){
+      lapply(chunk_nos, function(i) self$make_speaker_node(chunk_no = i, parent = parent))
+      invisible(self)
+    },
+    
+    
+    make_header = function(template = system.file("xml", "teiTemplate.xml", package = "frappp")){
+      self$xml <- xml2::read_xml(template)
+      lapply(
+        names(self$xpath),
+        function(x){
+          if (x %in% names(self$metadata)){
+            teiNode <- xml2::xml_find_first(x = self$xml, xpath = self$xpath[[x]])
+            xml2::xml_text(teiNode) <- as.character(self$metadata[[x]])
+          }
+        })
+      invisible(self)
+    },
+    
+    
+    make_body = function(){
+      bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
+      if (is.null(self$agenda_item_regex)){ # annotate agenda items if regex present
+        self$make_speaker_nodes(chunk_nos = 1:length(self$chunks), parent = bodyNode)
+      } else {
+        topicCallDf <- self$get_agenda_item_calls()
+        if (is.null(topicCallDf)){
+          agendaItemChunks <- list(1L:length(self$chunks))
+          topicCallDf <- data.frame(chunk = 1, position = NA, type = NA, desc = NA)
+        } else {
+          topicCallChunks <- topicCallDf[["chunk"]]
+          # to include the last para in the last topic called
+          if (max(topicCallChunks) != length(self$chunks)){
+            topicCallChunks <- unique(c(topicCallChunks, length(self$chunks))) # unique may be unnecessary
+          }
+          if (length(self$chunks) > 1L){
+            howToCut <- cut(x = 1L:length(self$chunks), breaks = topicCallChunks, include.lowest = TRUE) # will return factor
+            howToCutInt <- as.integer(howToCut)
+            howToCutInt[which(is.na(howToCutInt))] <- 0L
+            if (0L %in% howToCutInt){
+              topicCallDf <- rbind(data.frame(chunk = 1, position = NA, type = NA, desc = NA), topicCallDf)
+            }
+          } else {
+            # cut will not work if the number of chunks is 1 and the chunk includes an agenda item call
+            howToCutInt <- 1L
+          }
+          agendaItemChunks <- split(1L:length(self$chunks), howToCutInt)
+        }
+        lapply(
+          1L:length(agendaItemChunks),
+          function(i){
+            newAgendaItemNode <- xml_add_child(
+              .x = bodyNode, .value = "div", type = "agenda_item", 
+              n = names(agendaItemChunks)[i], what = unname(topicCallDf[i,"type"]), desc = unname(topicCallDf[i,"desc"])
+            )
+            self$make_speaker_nodes(chunk_nos = agendaItemChunks[[i]], parent = newAgendaItemNode)
+          }
+        )
+      }
+      invisible(self)
+    },
+    
+    
+    xmlify = function(){
+      self$preprocessing() # remove leading and and trailing spaces
+      self$get_metadata() # returns a list with sessionNo, lp, date
+      self$split_by_speakers()
+      # self$concatenateMultilineInterjections()
+      self$reconstruct_paragraphs()
+      self$make_header()
+      self$make_body()
+      invisible(self)
+    },
+    
+    browse_xml = function(){
+      tmpfile <- tempfile()
+      writeLines(text = as.character(self$xml), con = tmpfile)
+      browseURL(url = tmpfile)
+    },
+    
+    save_xml = function(filename){
+      writeLines(text = as.character(self$xml), con = filename)
+    },
+    
+    browse_txt = function(){
+      body <- sprintf("<p>%s</p>", self$txt)
+      html <- sprintf("<html><body>%s</body></html>", body)
+      tmpfile <- tempfile(fileext = ".html")
+      writeLines(text = html, con = tmpfile)
+      browseURL(url = tmpfile)
+    },
+    
+    browse_html = function(){
+      doc <- self$as_html()
+      htmlfile <- tempfile(fileext = ".html")
+      cat(doc, file = htmlfile)
+      browseURL(htmlfile)
+    },
+    
+    regex_context_in_chunks = function(regex, nchar_context = 100, verbose = FALSE){
+      
+      self$preprocessing() # remove leading and and trailing spaces
+      self$get_metadata() # returns a list with sessionNo, lp, date
+      self$get_debate()
+      self$split_by_speakers()
+      self$concatenateMultilineInterjections() # in package ctk.plpr
+      self$reconstruct_paragraphs()
+      regexMatches <- lapply(
+        1:length(self$chunks),
+        function(i) {
+          chunk <- self$chunks[[i]]
+          role <- gsub("^(.*?)\\d+$", "\\1", names(self$chunks)[i])
+          matches <- ctk:::.regexContext(
+            chunk,
+            param = list(asText = TRUE, regex = regex, ncharContext = nchar_context)
+          )
+          if (nrow(matches) > 0){
+            if (i == length(Protocol$chunks)){
+              return(NULL)
+            } else {
+              return(data.frame(role = role, chunk_no = i, matches))  
+            }
+          } else {
+            return(NULL)
+          }
+        })
+      regexMatchDf <- do.call(rbind, regexMatches)
+      if (!is.null(regexMatchDf)){
+        regexMatchDf <- subset(regexMatchDf, !is.na(regexMatches))
+        regexMatchDf[,"filename"] <- filename    
+      }
+      regexMatchDf  
+    },
+    
+    as_html = function(){
+      data <- lapply(self$xpath, function(xpath) xml_text(xml_find_all(self$xml, xpath = xpath)[[1]]))
+      protocolTitle <- sprintf(
+        "# %s %s/%s (%s)",
+        data$title, data$legislativePeriod, data$sessionNo, data$date
+      )
+      debatesList <- lapply(
+        xml_find_all(self$xml, xpath = '//div[@type="agenda_item"]'),
+        function(topicNode){
+          debateTextList <- lapply(
+            xml_children(topicNode),
+            function(topicNodeChild){
+              if (xml_name(topicNodeChild) == "sp"){
+                speechMarkdownList <- lapply(
+                  xml_children(topicNodeChild),
+                  function(speakerNodeChild){
+                    if (xml_name(speakerNodeChild) == "speaker"){
+                      return("")
+                    } else if (xml_name(speakerNodeChild) == "p"){
+                      return(xml_text(speakerNodeChild))
+                    } else if (xml_name(speakerNodeChild) == "stage"){
+                      return(paste("\n>", xml_text(speakerNodeChild), "\n", collapse=" "))
+                    }
+                  })
+                speechMarkdown <- paste(speechMarkdownList, collapse = "\n\n")
+                speakerCall <- paste0(xml_attrs(topicNodeChild), collapse = "/")
+                speakerMarkdown <- paste("**", speakerCall, "**", sep = "")
+                speech <- paste(speakerMarkdown, speechMarkdown, sep=": ")
+                return(speech)
+              } else if (xmlName(topicNodeChild) == "stage"){
+                return(paste("*", xml_text(topicNodeChild), "*"))
+              }
+            })
+          debateText <- paste(debateTextList, collapse = "\n\n")
+          headingAgendaItem <- paste(
+            "## Agenda Item ",
+            xml_attrs(topicNode)["n"], ': "',
+            xml_attrs(topicNode)["desc"], '" (<i>',
+            xml_attrs(topicNode)["what"], "</i>) ##",
+            sep = "")
+          paste(headingAgendaItem, debateText, sep="\n\n")
+        })
+      protocolText <- paste(unlist(debatesList), sep = "\n\n", collapse = "\n\n")
+      protocolMarkdown <- paste(protocolTitle, protocolText, sep = "\n\n")
+      protocolHtml <- markdown::markdownToHTML(text = protocolMarkdown)  
+      protocolHtml <- gsub("<.?ul>", "", protocolHtml)
+      protocolHtml <- gsub("<li>", "<p>", protocolHtml)
+      protocolHtml <- gsub("</li>", "</p>", protocolHtml)
+      protocolHtml
+    }
+    
   )
 )
