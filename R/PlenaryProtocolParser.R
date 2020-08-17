@@ -418,9 +418,15 @@ PlenaryProtocolParser <- R6Class(
         # include an interjection if the interjection is the second element of
         # the chunk. We split them here by adjusting the sections.
         
-        if (any(cutPoints == 2) && names(chunk)[2] != "" && !any(levels(sections) == "[1,2]")) { # previous and working "(1,2]")
-          sections <- factor(sections, levels = c("[0,1]", levels(sections)))
-          levels(sections)[levels(sections) == "[1,2]"] <- "(1,2]"
+        if (any(cutPoints == 2) && names(chunk)[2] != "" && !any(levels(sections) == "(1,2]")) { # previous and working "(1,2]")
+          
+          if (!any(levels(sections) == "[1,2]")) {
+            levels(sections)[levels(sections) == "[1,2]"] <- "(1,2]"
+          }
+          
+          if (!any(levels(sections) == "[0,1]")) {
+            sections <- factor(sections, levels = c("[0,1]", levels(sections)))
+          }
           sections[1] <- "[0,1]"
         }
         
