@@ -1,3 +1,7 @@
+v0.4.1.9007
+===========
+* Bug removed which concatenated non-interjection and interjection paragraphs resulting in missed interjection chunks.
+
 v0.4.1.9005
 ===========
 * matching for agenda_item_mismatch via id, not by filename (so that same mismatches can be used for xml-based and txt-based corpus preparation)

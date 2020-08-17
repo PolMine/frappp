@@ -406,13 +406,23 @@ PlenaryProtocolParser <- R6Class(
         cutPoints <- unique(c(1, stage - 1, stage, length(chunk)))
         cutPoints <- cutPoints[order(cutPoints)]
         
-          # otherwise use the cut points to split the chunk (this fails if the
-          # length of the chunk is equal to the length of the cut points)
-          
-          sections <- cut(
-            x = 1:length(chunk), breaks = cutPoints,
-            include.lowest = TRUE, right = TRUE
-          )
+        # otherwise use the cut points to split the chunk (this fails if the
+        # length of the chunk is equal to the length of the cut points)
+        
+        sections <- cut(
+          x = 1:length(chunk), breaks = cutPoints,
+          include.lowest = TRUE, right = TRUE
+        )
+        
+        # there seems to be a special case in which the first subchunk might
+        # include an interjection if the interjection is the second element of
+        # the chunk. We split them here by adjusting the sections.
+        
+        if (any(cutPoints == 2) && names(chunk)[2] != "" && !any(levels(sections) == "[1,2]")) { # previous and working "(1,2]")
+          sections <- factor(sections, levels = c("[0,1]", levels(sections)))
+          levels(sections)[levels(sections) == "[1,2]"] <- "(1,2]"
+          sections[1] <- "[0,1]"
+        }
         
         subchunks <- split(chunk, sections)
         
@@ -428,7 +438,7 @@ PlenaryProtocolParser <- R6Class(
       if (!is.null(exclude)) {
         self$chunks[which(names(self$chunks) != exclude)] <- lapply(self$chunks[which(names(self$chunks) != exclude)], .processor)
       } else { 
-        self$chunks<- lapply(self$chunks, .processor)
+        self$chunks <- lapply(self$chunks, .processor)
       }
       
       invisible(self)
