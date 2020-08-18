@@ -22,7 +22,7 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
   x2 <- sapply(
     1:length(x),
     function(i) {
-      if (grepl("-$", x[i])){
+      if (grepl("\\S+-$", x[i])){ # changed here. Before the hyphen, there shouldn't be a whitespace as this could be an insertion indicated by "-".
         if (language == "de") {
           y <- if (grepl("^[A-Z]|^und|^oder", x[i+1])) x[i] else gsub("-$", "", x[i]) 
           
