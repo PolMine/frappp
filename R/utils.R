@@ -28,7 +28,7 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
           
           # if after that, there still is a hyphen and a "und" or "oder" starts
           # the following line, keep the hyphen and insert a whitespace after
-          # that
+          # that.
           
           if (grepl("^und|^oder", x[i+1]) && grepl("-$", x[i])) y <- gsub("-$", "- ", x[i])
           
@@ -41,7 +41,6 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
       y
     }
   )
-  
   
   concat_hyphenated <- function(txt) {
     for (i in length(txt):2) {
@@ -58,7 +57,6 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
     txt <- trimws(txt)
     return(txt)
   }
-  
   
   # To reconstruct paragraphs, the following heuristic is applied: We
   # assume that a new paragraph begins, if a line ends with a
@@ -86,8 +84,6 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
   }
   
   # The same is true for terms which should indicate the end of a paragraph
-  
-  
   if (!is.null(end_paragraph_term)) {
     if (length(end_paragraph_term) > 1) end_paragraph_term <- paste(end_paragraph_term, collapse = "|")
     termLines <- which(grepl(paste0(".*", end_paragraph_term, "\\s*$"), x2))

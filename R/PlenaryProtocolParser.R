@@ -534,8 +534,9 @@ PlenaryProtocolParser <- R6Class(
       xml_attrs(newSpeakerNode) <- speakerAttrs
       
       # The speaker call is not necessarily present (e.g. when chunks are extracted from XML)
-      if (grepl(":", lines[1])){
-        split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?:)\\s*(.*)\\s*$")[[1]]
+      # And mismatches do lead to semicolons
+      if (grepl(":|;", lines[1])){
+        split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?[:;])\\s*(.*)\\s*$")[[1]]
         lines[1] <- split[1,3]
         xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
       }
