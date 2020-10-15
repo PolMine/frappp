@@ -332,7 +332,7 @@ PlenaryProtocolParser <- R6Class(
       self$txt <- paste_and_match(
         x = self$txt, regex = sapply(self$speaker_regex, function(x) x[["regex"]]),
         n_lines = if (is.null(self$speaker_match_n_lines)) 1L else self$speaker_match_n_lines,
-        mismatch = self$speaker_mismatch
+        mismatch = character() # changed here. Otherwise the mismatch is applied twice: in the chunk table and in the entire line, one with a literal match and one with a grep.
       )
       invisible(self)
     },

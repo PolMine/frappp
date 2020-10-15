@@ -144,7 +144,7 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
         }
       }
       matches <- grep(regex[regexID], collapsed, perl = TRUE)
-      # for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)] # this matches the entire line (in contrast to  the functionality in get_chunk_data() which only looks into the who slot)
+      for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)] # this matches the entire line (in contrast to  the functionality in get_chunk_data() which only looks into the who slot)
       for (m in rev(matches)){
         if (all(names(x)[m:(m + i - 1L)] == "")){
           x[m] <- collapsed[m]
