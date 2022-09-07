@@ -571,7 +571,6 @@ PlenaryProtocolParser <- R6Class(
       lapply(
         names(self$xpath),
         function(x){
-          print(x)
           if (x %in% names(self$metadata)){
             teiNode <- xml2::xml_find_first(x = self$xml, xpath = self$xpath[[x]])
             xml2::xml_text(teiNode) <- as.character(self$metadata[[x]])
