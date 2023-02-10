@@ -377,7 +377,13 @@ PlenaryProtocolParser <- R6Class(
       invisible(self)
     },
     
-    reconstruct_paragraphs = function(exclude = NULL, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = NULL){
+    reconstruct_paragraphs = function(exclude = NULL,
+                                      threshold = 40,
+                                      start_paragraph_term = NULL,
+                                      end_paragraph_term = NULL,
+                                      language = NULL,
+                                      paragraph_punctuation = ":",
+                                      break_punctuation = "[[:punct:]]"){
       # The general scheme is that we iterate through the chunks. Thus there 
       # is a helper function '.chunkProcessor' to handle the individual chunks.
       .processor <- function(chunk){
@@ -424,7 +430,13 @@ PlenaryProtocolParser <- R6Class(
         
         # iterate through the list of speech and interjections.
         retval <- lapply(subchunks, function(x){
-          y <- paragraphize(x = x, threshold = threshold, start_paragraph_term = start_paragraph_term, end_paragraph_term = end_paragraph_term, language = language)
+          y <- paragraphize(x = x,
+                            threshold = threshold,
+                            start_paragraph_term = start_paragraph_term,
+                            end_paragraph_term = end_paragraph_term,
+                            language = language,
+                            paragraph_punctuation = paragraph_punctuation,
+                            break_punctuation = break_punctuation)
           if (is.null(names(y))) names(y) <- rep("", times = length(y))
           y
         })
@@ -539,7 +551,7 @@ PlenaryProtocolParser <- R6Class(
         if (self$output_format == "ParlaMint") {
           xml_add_child(newSpeakerNode, .value = "note", split[1,2], type = "speaker")
         } else {
-          xml_add_child(newSpeakerNode, .value = "speaker", split[1,2], type = "speaker")
+          xml_add_child(newSpeakerNode, .value = "speaker", split[1,2])
         }
       }
 

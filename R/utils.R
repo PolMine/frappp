@@ -1,16 +1,29 @@
 #' Reconstruct paragraphs.
-#' 
-#' Reconstruct paragraphs from a character vector with dissolved paragraphs,
-#' to cope with a typical scenario when processing pdf documents.
-#' 
+#'
+#' Reconstruct paragraphs from a character vector with dissolved paragraphs, to
+#' cope with a typical scenario when processing pdf documents.
+#'
 #' @param x character vector to be processed
 #' @param threshold number of characters per line to distinguish whether to make
 #'   / not to make a paragraph
-#' @param start_paragraph_term character vector or expression which should start a new paragraph
-#' @param end_paragraph_term character vector or expression which should end a paragraph
+#' @param start_paragraph_term character vector or expression which should start
+#'   a new paragraph
+#' @param end_paragraph_term character vector or expression which should end a
+#'   paragraph
 #' @param language for language specific heuristics
+#' @param paragraph_punctuation character vector of punctuation marks which
+#'   indicate the end of a paragraph if the next line starts with an upper case
+#'   letter.
+#' @break_punctuation character vector of punctuation marks which indicate the
+#'   end of a paragraph if the next line is shorter than the threshold. Needs to be regexed already.
 #' @export paragraphize
-paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_paragraph_term = NULL, language = "de"){
+paragraphize <- function(x,
+                         threshold = 40,
+                         start_paragraph_term = NULL,
+                         end_paragraph_term = NULL,
+                         language = "de",
+                         paragraph_punctuation = ":",
+                         break_punctuation = "[[:punct:]]"){
   # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
   # and the next line does not start with a big capital letter, the hyphen is 
   # removed.
@@ -23,7 +36,7 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
     1:length(x),
     function(i) {
       if (grepl("\\S+-$", x[i])){ # changed here. Before the hyphen, there shouldn't be a whitespace as this could be an insertion indicated by "-".
-        if (language == "de") {
+        if (!is.null(language) && language == "de") {
           y <- if (grepl("^[A-Z]|^und|^oder", x[i+1])) x[i] else gsub("-$", "", x[i]) 
           
           # if after that, there still is a hyphen and a "und" or "oder" starts
@@ -63,16 +76,31 @@ paragraphize <- function(x, threshold = 40, start_paragraph_term = NULL, end_par
   # punctuation mark, and if the length of the line undercuts a
   # certain threshold (hardcoded, 40).
   
-  breakLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
-  
+  # breakLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
+
+  # 2023: This [[:punct:]] does include commas which usually do not introduce
+  # paragraphs. This is made more explicit by the argument break_punctuation.
+
+  breakLines <- which(nchar(x2) < threshold & grepl(sprintf(".*%s\\s*$", break_punctuation), x2))
+
   # In addition, we can assume a paragraph if the line ends with a colon
   # (indenpendent from the length of the line) and the next line starts with a
   # capital letter (might be too language dependent?) or a dash or hyphen.
+
+  # 2023: This is not always a good heuristic. In the PDFs of the German
+  # Bundestag, colons do not necessarily indicate new paragraphs.
+
+  if (is.character(paragraph_punctuation)) {
+
+    paragraph_punctuation_collapsed <- paste0(paste0("\\", paragraph_punctuation), collapse = "|")
+    paragraph_punctuation_collapsed_regex <- sprintf(".*(%s)\\s*$", paragraph_punctuation_collapsed)
   
-  colonLines <- which(grepl(".*\\:\\s*$", x2))
-  colBreakLines <- colonLines[which(grepl("^([A-Z]|\\-|\\–|\\—)+.*", x2[colonLines+1]))]
-  breakLines <- unique(unname(c(breakLines, colBreakLines)))
-  
+    punctuationLines <- which(grepl(paragraph_punctuation_collapsed_regex, x2))
+    punctBreakLines <- punctuationLines[which(grepl("^([A-Z]|\\-|\\–|\\—)+.*", x2[punctuationLines + 1]))]
+    breakLines <- unique(unname(c(breakLines, punctBreakLines)))
+
+  }
+
   # In addition, there are document specific lines in which it would be
   # advantageous for the following processing steps if a linebreak would occur
   # before the term.

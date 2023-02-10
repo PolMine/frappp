@@ -1,3 +1,8 @@
+v0.4.1.9009
+============
+* added more arguments to paragraphize() in utils to make paragraphs more adjustable
+* fixed language argument so that setting NULL actually works
+
 v0.4.1.9008
 ===========
 * adjusted structural annotation to accommodate other TEI standards
