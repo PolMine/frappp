@@ -104,7 +104,13 @@
 #'  regex} \item{\code{verbose}}{logical, whether to output messages }
 #'  \item{\code{n}}{the number of lines that will maximally be collapsed to
 #'  check whether one of the regular expressions in $stage_regex matches}
-#' }
+#'  \item{\code{speaker_mismatch}}{An alternative character vector of speaker
+#'  mismatches which is passed to \code{split_by_speakers} in lieu of the
+#'  character vector in $speaker_mismatch. The reasoning is that the
+#'  detect_speaker_regex_matches function takes regular expression as mismatches
+#'  while get_chunk_data takes verbatim character vectors as mismatches. This
+#'  might be the same in a lot of scenarios but in those which do not work,
+#'  passing a separate list might work.} }
 #'@section Methods: \describe{ \item{\code{$new(xpath = teiXpath)}}{initialize a
 #'  new object of class \code{PlenaryProtocolParser}; assigns the default XPath
 #'  expressions} \item{\code{$read_file = function(filename, id =
@@ -123,15 +129,15 @@
 #'  character vector) to what is already present in field $metadata; }
 #'  \item{\code{$get_debate()}}{remove leading and trailing noise before the
 #'  "actual debate" (such as table of contents, or annexes); undefined for
-#'  parent class} \item{\code{$split_by_speakers()}}{turn the plain text
-#'  document into a list of chunks by applying regular expressions for speakers}
-#'  \item{\code{get_chunk_data()}}{extract speaker data by applying regular
-#'  expressions in $speaker_regex; the result is stored in the field
-#'  $chunk_data} \item{\code{$reconstruct_paragraphs(exclude = "pres")}}{This
-#'  function concatenates paragraphs that are splitted (i.e. the text does not
-#'  end with an interpuncutation) by applying a regex. It includes an exlude
-#'  parameter: The formalities in the protocols explained by the president may
-#'  include much more than spoken text.}
+#'  parent class} \item{\code{$split_by_speakers(speaker_mismatch = NULL)}}{turn
+#'  the plain text document into a list of chunks by applying regular
+#'  expressions for speakers} \item{\code{get_chunk_data()}}{extract speaker
+#'  data by applying regular expressions in $speaker_regex; the result is stored
+#'  in the field $chunk_data} \item{\code{$reconstruct_paragraphs(exclude =
+#'  "pres")}}{This function concatenates paragraphs that are splitted (i.e. the
+#'  text does not end with an interpuncutation) by applying a regex. It includes
+#'  an exlude parameter: The formalities in the protocols explained by the
+#'  president may include much more than spoken text.}
 #'  \item{\code{$make_speaker_nodes(chunk_nos, parent)}}{Iterate through the
 #'  chunks (i.e. list of character vectors in the field \code{chunks}) and add
 #'  nodes for speakers in the TEI document (in the field \code{xml})) at the
@@ -318,12 +324,27 @@ PlenaryProtocolParser <- R6Class(
     },
     
     
-    detect_speaker_regex_matches = function(){
+    detect_speaker_regex_matches = function(speaker_mismatch = NULL){
       self$txt <- paste_and_match(
-        x = self$txt, regex = sapply(self$speaker_regex, function(x) x[["regex"]]),
+        x = self$txt,
+        regex = sapply(self$speaker_regex, function(x) x[["regex"]]),
         n_lines = if (is.null(self$speaker_match_n_lines)) 1L else self$speaker_match_n_lines,
-        mismatch = character() # changed here. Otherwise the mismatch is applied twice: in the chunk table and in the entire line, one with a literal match and one with a grep.
+        mismatch = if (is.null(speaker_mismatch)) self$speaker_mismatch else speaker_mismatch
+
+        # changed here. Otherwise the mismatch is applied twice: in the chunk
+        # table and in the entire line, one with a literal match and one with a
+        # grep.
+
+        # was: mismatch = character() 2023-03: The idea of this change is
+        # correct. It is challenging that the mismatch is used twice, once
+        # literal and once as a regular expression. However, omitting the
+        # mismatch here has the unintended consequence that even mismatches are
+        # changed by paste_and_match, i.e. the lines are concatenated although
+        # the match is dropped later on. This is unfortunate for, for example,
+        # finding stage comments later on. In consequence, the mismatch here is
+        # reintroduced but with the possibility of a "regexed" version.
       )
+
       invisible(self)
     },
     
@@ -343,7 +364,7 @@ PlenaryProtocolParser <- R6Class(
     },
     
     
-    split_by_speakers = function(){
+    split_by_speakers = function(speaker_mismatch = NULL){
       
       # The first step is to get the indices of the vector where a call to a speaker occurs.
       # We iterate through the list provided by the 'speaker_regex' field, and get the
@@ -352,28 +373,29 @@ PlenaryProtocolParser <- R6Class(
       # included in the field 'speaker_mismatch' are discarded, too.
       
       
-      self$detect_speaker_regex_matches()
+      self$detect_speaker_regex_matches(speaker_mismatch = speaker_mismatch)
       names(self$txt) <- rep("", times = length(self$txt))
       self$get_chunk_data()
-      
       
       # Intermediate step: We get the indices with the start paragraphs from the
       # data.frame in chunk_data. We ensure that the last element of the vector
       # is the last line in self$txt
       start_paras <- self$chunk_data[["index"]]
+
       if (start_paras[length(start_paras)] != length(self$txt)){
         start_paras <- c(start_paras, length(self$txt))
       }
       
       # Finally, the raw character vector is chunked, i.e. it is turned into a list
       # with sections of speech of one speaker that has been identified.
+
       paras_speeches_factor <- cut(
         1L:length(self$txt), breaks = start_paras,
         include.lowest = TRUE, right = FALSE
       )
       self$chunks <- split(self$txt, paras_speeches_factor)
       names(self$chunks) <- self$chunk_data[["regex"]][1L:length(self$chunks)]
-      
+
       invisible(self)
     },
     
@@ -383,7 +405,8 @@ PlenaryProtocolParser <- R6Class(
                                       end_paragraph_term = NULL,
                                       language = NULL,
                                       paragraph_punctuation = ":",
-                                      break_punctuation = "[[:punct:]]"){
+                                      break_punctuation = "[[:punct:]]",
+                                      paragraph_by_whitespace = FALSE){
       # The general scheme is that we iterate through the chunks. Thus there 
       # is a helper function '.chunkProcessor' to handle the individual chunks.
       .processor <- function(chunk){
@@ -436,7 +459,8 @@ PlenaryProtocolParser <- R6Class(
                             end_paragraph_term = end_paragraph_term,
                             language = language,
                             paragraph_punctuation = paragraph_punctuation,
-                            break_punctuation = break_punctuation)
+                            break_punctuation = break_punctuation,
+                            paragraph_by_whitespace = paragraph_by_whitespace)
           if (is.null(names(y))) names(y) <- rep("", times = length(y))
           y
         })
@@ -494,7 +518,7 @@ PlenaryProtocolParser <- R6Class(
             agenda_item_type <- paste(names(agenda_item_type_match[which(agenda_item_type_match == TRUE)]), collapse = "|")   
             if (!is.null(self$agenda_item_maximum_nchar_desc)){
               agenda_item_desc <- if (nchar(agenda_item_title) > self$agenda_item_maximum_nchar_desc){
-                paste(substr(agenda_item_title, 1, self$agenda_item_maximum_nchar_desc), "...", sep = " ")
+                paste0(substr(agenda_item_title, 1, self$agenda_item_maximum_nchar_desc), "...")
               } else {
                 agenda_item_title
               }

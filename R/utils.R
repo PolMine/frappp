@@ -15,7 +15,10 @@
 #'   indicate the end of a paragraph if the next line starts with an upper case
 #'   letter.
 #' @break_punctuation character vector of punctuation marks which indicate the
-#'   end of a paragraph if the next line is shorter than the threshold. Needs to be regexed already.
+#'   end of a paragraph if the next line is shorter than the threshold. Needs to
+#'   be regexed already.
+#' @paragraph_by_whitespace logical; if true, the paragraphs are derived from
+#'   lines containing only white space. All other arguments are ignored.
 #' @export paragraphize
 paragraphize <- function(x,
                          threshold = 40,
@@ -23,7 +26,8 @@ paragraphize <- function(x,
                          end_paragraph_term = NULL,
                          language = "de",
                          paragraph_punctuation = ":",
-                         break_punctuation = "[[:punct:]]"){
+                         break_punctuation = "[[:punct:]]",
+                         paragraph_by_whitespace = FALSE){
   # To prepare concatenation, we check whether lines end with a hyphen. If TRUE,
   # and the next line does not start with a big capital letter, the hyphen is 
   # removed.
@@ -71,55 +75,70 @@ paragraphize <- function(x,
     return(txt)
   }
   
-  # To reconstruct paragraphs, the following heuristic is applied: We
-  # assume that a new paragraph begins, if a line ends with a
-  # punctuation mark, and if the length of the line undercuts a
-  # certain threshold (hardcoded, 40).
+  # 2023: In some protocols, it is possible to get the paragraphs based on empty
+  # lines alone.
   
-  # breakLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
+  if (isTRUE(paragraph_by_whitespace)) {
 
-  # 2023: This [[:punct:]] does include commas which usually do not introduce
-  # paragraphs. This is made more explicit by the argument break_punctuation.
+    breakLines <- grep("^\\s*$", x2)
 
-  breakLines <- which(nchar(x2) < threshold & grepl(sprintf(".*%s\\s*$", break_punctuation), x2))
+    # empty lines in the first and last index should be ignored
 
-  # In addition, we can assume a paragraph if the line ends with a colon
-  # (indenpendent from the length of the line) and the next line starts with a
-  # capital letter (might be too language dependent?) or a dash or hyphen.
+    if (any(breakLines == 1)) breakLines <- breakLines[-which(breakLines == 1)]
+    if (any(breakLines == length(x2))) breakLines <- breakLines[-which(breakLines == length(x2))]
 
-  # 2023: This is not always a good heuristic. In the PDFs of the German
-  # Bundestag, colons do not necessarily indicate new paragraphs.
+  } else {
 
-  if (is.character(paragraph_punctuation)) {
+    # To reconstruct paragraphs, the following heuristic is applied: We
+    # assume that a new paragraph begins, if a line ends with a
+    # punctuation mark, and if the length of the line undercuts a
+    # certain threshold (hardcoded, 40).
 
-    paragraph_punctuation_collapsed <- paste0(paste0("\\", paragraph_punctuation), collapse = "|")
-    paragraph_punctuation_collapsed_regex <- sprintf(".*(%s)\\s*$", paragraph_punctuation_collapsed)
-  
-    punctuationLines <- which(grepl(paragraph_punctuation_collapsed_regex, x2))
-    punctBreakLines <- punctuationLines[which(grepl("^([A-Z]|\\-|\\–|\\—)+.*", x2[punctuationLines + 1]))]
-    breakLines <- unique(unname(c(breakLines, punctBreakLines)))
+    # breakLines <- which(nchar(x2) < threshold & grepl(".*[[:punct:]]\\s*$", x2))
 
+    # 2023: This [[:punct:]] does include commas which usually do not introduce
+    # paragraphs. This is made more explicit by the argument break_punctuation.
+
+    breakLines <- which(nchar(x2) < threshold & grepl(sprintf(".*(%s)\\s*$", break_punctuation), x2))
+
+    # In addition, we can assume a paragraph if the line ends with a colon
+    # (independent from the length of the line) and the next line starts with a
+    # capital letter (might be too language dependent?) or a dash or hyphen.
+
+    # 2023: This is not always a good heuristic. In the PDFs of the German
+    # Bundestag, colons do not necessarily indicate new paragraphs.
+
+    if (is.character(paragraph_punctuation)) {
+
+      paragraph_punctuation_collapsed <- paste0(paste0("\\", paragraph_punctuation), collapse = "|")
+      paragraph_punctuation_collapsed_regex <- sprintf(".*(%s)\\s*$", paragraph_punctuation_collapsed)
+
+      punctuationLines <- which(grepl(paragraph_punctuation_collapsed_regex, x2))
+      punctBreakLines <- punctuationLines[which(grepl("^([A-Z]|\\-|\\–|\\—)+.*", x2[punctuationLines + 1]))]
+      breakLines <- unique(unname(c(breakLines, punctBreakLines)))
+
+    }
+
+    # In addition, there are document specific lines in which it would be
+    # advantageous for the following processing steps if a linebreak would occur
+    # before the term.
+
+    if (!is.null(start_paragraph_term)) {
+      if (length(start_paragraph_term) > 1) start_paragraph_term <- paste(start_paragraph_term, collapse = "|")
+      termLines <- which(grepl(paste0("^", start_paragraph_term, ".*"), x2))
+      breakLines <- unique(unname(c(breakLines, termLines)))
+    }
+
+    # The same is true for terms which should indicate the end of a paragraph
+    if (!is.null(end_paragraph_term)) {
+      if (length(end_paragraph_term) > 1) end_paragraph_term <- paste(end_paragraph_term, collapse = "|")
+      termLines <- which(grepl(paste0(".*", end_paragraph_term, "\\s*$"), x2))
+      breakLines <- unique(unname(c(breakLines, termLines)))
+    }
   }
 
-  # In addition, there are document specific lines in which it would be
-  # advantageous for the following processing steps if a linebreak would occur
-  # before the term.
-  
-  if (!is.null(start_paragraph_term)) {
-    if (length(start_paragraph_term) > 1) start_paragraph_term <- paste(start_paragraph_term, collapse = "|")
-    termLines <- which(grepl(paste0("^", start_paragraph_term, ".*"), x2))
-    breakLines <- unique(unname(c(breakLines, termLines)))
-  }
-  
-  # The same is true for terms which should indicate the end of a paragraph
-  if (!is.null(end_paragraph_term)) {
-    if (length(end_paragraph_term) > 1) end_paragraph_term <- paste(end_paragraph_term, collapse = "|")
-    termLines <- which(grepl(paste0(".*", end_paragraph_term, "\\s*$"), x2))
-    breakLines <- unique(unname(c(breakLines, termLines)))
-  }
-  
   x2[breakLines] <- sprintf("%s<linebreak/>", x2[breakLines])
-  
+
   # Paste everything, and break it up again
   concatenated <- paste(x2, collapse = "")
   paragraphs <- unlist(strsplit(concatenated, "<linebreak/>"))
@@ -171,8 +190,13 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
           collapsed <- x
         }
       }
+
       matches <- grep(regex[regexID], collapsed, perl = TRUE)
-      for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)] # this matches the entire line (in contrast to  the functionality in get_chunk_data() which only looks into the who slot)
+      for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)]
+
+      # the loop above matches the entire line (in contrast to  the functionality in
+      # get_chunk_data() which only looks into the who slot)
+
       for (m in rev(matches)){
         if (all(names(x)[m:(m + i - 1L)] == "")){
           x[m] <- collapsed[m]

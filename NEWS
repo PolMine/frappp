@@ -1,7 +1,14 @@
+v0.4.1.9010
+============
+
+* reintroduced speaker_mismatch as an argument for `detect_speaker_regex_matches()` and `split_by_speakers()`
+* minor adjustment in `get_agenda_item_calls()` to mirror the behaviour in the existing GermaParlTEIs in which the truncation of agenda items did not introduce an additional whitespace
+
 v0.4.1.9009
 ============
 * added more arguments to paragraphize() in utils to make paragraphs more adjustable
 * fixed language argument so that setting NULL actually works
+* added paragraph_by_whitespace argument to reconstruct_paragraphs() method to add an easier way to get paragraphs if working with pre-structured data
 
 v0.4.1.9008
 ===========
