@@ -602,9 +602,11 @@ PlenaryProtocolParser <- R6Class(
             }
           } else {
             if (self$output_format == "ParlaMint") {
-              if (lines[i] != "") new_segment_node <- xml_add_child(newSpeakerNode, .value = "seg", lines[i])
-              xml2::xml_attr(new_segment_node, "id") <- sprintf("%s_%s.seg%s", self$metadata$corpus_name, self$metadata$date, self$segment_counter)
-              self$segment_counter <- self$segment_counter + 1
+              if (lines[i] != "") {
+                new_segment_node <- xml_add_child(newSpeakerNode, .value = "seg", lines[i])
+                xml2::xml_attr(new_segment_node, "id") <- sprintf("%s_%s.seg%s", self$metadata$corpus_name, self$metadata$date, self$segment_counter)
+                self$segment_counter <- self$segment_counter + 1
+              }
             } else {
               if (lines[i] != "") xml_add_child(newSpeakerNode, .value = "p", lines[i])
             }

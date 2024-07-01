@@ -1,8 +1,8 @@
 Package: frappp
 Type: Package
 Title: Framework for Parsing Plenary Protocols
-Version: 0.4.1.9010
-Date: 2023-03-09
+Version: 0.4.1.9011
+Date: 2023-08-15
 Author: Andreas Blaette
 Maintainer: Andreas Blaette <andreas.blaette@uni-due.de>
 Description: Framework for Parsing Plenary Protocols.
