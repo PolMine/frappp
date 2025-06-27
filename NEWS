@@ -1,3 +1,12 @@
+v0.4.1.9012
+============
+* `make_speaker_node()`: minor changes to the stage annotation for ParlaMint (removed surrounding parentheses and renamed the stage nodes as "stage" instead of "vocal")
+* `make_body()`: minor changes to the way agenda items are annotated for ParlaMint
+
+v0.4.1.9011
+============
+* TBA
+
 v0.4.1.9010
 ============
 

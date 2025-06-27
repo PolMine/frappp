@@ -529,7 +529,10 @@ PlenaryProtocolParser <- R6Class(
             }
           }
           data.frame(
-            chunk = i, position = match_position, type = agenda_item_type, desc = agenda_item_desc,
+            chunk = i,
+            position = match_position,
+            type = agenda_item_type,
+            desc = agenda_item_desc,
             stringsAsFactors = FALSE
           )
         }
@@ -586,8 +589,17 @@ PlenaryProtocolParser <- R6Class(
             # add element for interjection, if respective regex matches
             if (names(lines)[i] != ""){
               if (self$output_format == "ParlaMint") {
-                new_stage_node <- xml_add_child(newSpeakerNode, .value = "vocal", type = names(lines)[i])
-                xml_add_child(new_stage_node, .value = "desc", lines[i])
+                new_stage_node <- xml_add_child(newSpeakerNode, .value = "stage", type = names(lines)[i])
+                lines_mod <- lines[i]
+
+                # in ParlaMint, the interjections do not have parentheses. To
+                # account for missing parentheses, these are removed
+                # individually.
+
+                if (grepl("^\\(", lines_mod)) lines_mod <- gsub("^\\(", "", lines_mod)
+                if (grepl("\\)$", lines_mod)) lines_mod <- gsub("\\)$", "", lines_mod)
+
+                xml_add_child(new_stage_node, .value = "desc", lines_mod)
               } else {
                 xml_add_child(newSpeakerNode, .value = "stage", type = names(lines)[i], lines[i])
               }
@@ -669,7 +681,14 @@ PlenaryProtocolParser <- R6Class(
           1L:length(agendaItemChunks),
           function(i){
             if (self$output_format == "ParlaMint") {
-              newAgendaItemNode <- xml_add_child(.x = bodyNode, .value = "div", type = "debateSection") # the type is fixed in ParlaMint
+              newAgendaItemNode <- xml_add_child(.x = bodyNode,
+                                                 .value = "div",
+                                                 type = "debateSection", # the type is fixed in ParlaMint
+                                                 n = names(agendaItemChunks)[i])
+
+              if (!is.na(unname(topicCallDf[i, "type"]))) {
+                xml2::xml_attr(newAgendaItemNode, attr = "ana") <- paste0("#", unname(topicCallDf[i, "type"]))
+              }
 
               # the <div> has only the attribute of "type" in ParlaMint. Any
               # available description, title, etc. would be added as a <head>
@@ -678,9 +697,12 @@ PlenaryProtocolParser <- R6Class(
               # node (?). This is done only if there are any additional
               # attributes.
 
-              agenda_item_description <- sprintf("%s | %s | %s", names(agendaItemChunks)[i], unname(topicCallDf[i,"type"]), unname(topicCallDf[i,"desc"]))
+              # Update 2024-10: We add "n" and "type" (as "ana") to the debateSection div and
+              # and desc to the head child. (This still has to be consolidated).
 
-              if (length(agenda_item_description != 0)) {
+              agenda_item_description <- unname(topicCallDf[i, "desc"])
+
+              if (!is.na(agenda_item_description)) {
                 xml_add_child(.x = newAgendaItemNode, .value = "head", agenda_item_description)
               }
 
@@ -703,8 +725,8 @@ PlenaryProtocolParser <- R6Class(
 
       invisible(self)
     },
-    
-    
+
+
     xmlify = function(){
       self$preprocessing() # remove leading and and trailing spaces
       self$get_metadata() # returns a list with sessionNo, lp, date
