@@ -1,3 +1,33 @@
+v0.4.1.9012
+============
+* `make_speaker_node()`: Changed the format of running IDs for utterances and segments for ParlaMint to account for days on which more than one session takes place
+* `make_body()`: added possibility to split collapsed agenda item types for ParlaMint
+
+v0.4.1.9012
+============
+* `make_speaker_node()`: minor changes to the stage annotation for ParlaMint (removed surrounding parentheses and renamed the stage nodes as "stage" instead of "vocal")
+* `make_body()`: minor changes to the way agenda items are annotated for ParlaMint
+
+v0.4.1.9011
+============
+* TBA
+
+v0.4.1.9010
+============
+
+* reintroduced speaker_mismatch as an argument for `detect_speaker_regex_matches()` and `split_by_speakers()`
+* minor adjustment in `get_agenda_item_calls()` to mirror the behaviour in the existing GermaParlTEIs in which the truncation of agenda items did not introduce an additional whitespace
+
+v0.4.1.9009
+============
+* added more arguments to paragraphize() in utils to make paragraphs more adjustable
+* fixed language argument so that setting NULL actually works
+* added paragraph_by_whitespace argument to reconstruct_paragraphs() method to add an easier way to get paragraphs if working with pre-structured data
+
+v0.4.1.9008
+===========
+* adjusted structural annotation to accommodate other TEI standards
+
 v0.4.1.9007
 ===========
 * Bug removed which concatenated non-interjection and interjection paragraphs resulting in missed interjection chunks.
@@ -5,7 +35,7 @@ v0.4.1.9007
 v0.4.1.9005
 ===========
 * matching for agenda_item_mismatch via id, not by filename (so that same mismatches can be used for xml-based and txt-based corpus preparation)
-* Bug removed that occurrs in PlenaryProtocolParser$make_body() when length of chunks is 1
+* Bug removed that occurs in PlenaryProtocolParser$make_body() when length of chunks is 1
 * New field stage_mismatch_regex in PlenaryProtocolParser to prevent unwanted annotation of interjections.
 
 

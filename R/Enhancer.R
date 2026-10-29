@@ -147,12 +147,12 @@ Enhancer <- R6Class(
       attrDfMissingByRole
     },
     
-    enhanceFile = function(filename){
+    enhanceFile = function(filename, element = "sp"){
       startTime <- Sys.time()
       doc <- xml2::read_xml(x = file.path(self$sourceDir, filename))
       lpOfDoc <- xml2::xml_text(xml2::xml_find_all(doc, "//legislativePeriod")[[1]])
       dtSubsetLp <- self$speakerattributes[lp == lpOfDoc]
-      nodes <- xml2::xml_find_all(doc, xpath = paste("//", "sp"))
+      nodes <- xml2::xml_find_all(doc, xpath = paste("//", element))
       lapply(
         nodes,
         function(node){
