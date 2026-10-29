@@ -148,16 +148,26 @@ paragraphize <- function(x,
 }
 
 #' Paste Lines and Check for Matches.
-#' 
-#' Check for matches of regular expressions in any combination of up to the number
-#' of successive lines specified by \code{n_lines}. Matches that are matched by
-#' any element of \code{mismatch} (using \code{grepl}) will be ignored.
-#' 
+#'
+#' Check for matches of regular expressions in any combination of up to the
+#' number of successive lines specified by \code{n_lines}. Matches that are
+#' matched by any element of \code{mismatch} (using \code{grepl}) will be
+#' ignored.
+#'
 #' @param x input character vector
-#' @param regex a named character vector of regulary expressions
+#' @param regex a named character vector of regular expressions
 #' @param n_lines integer, maximum number of lines to match
 #' @param mismatch a character vector, regex matches included in this vector
 #'   will be discarded (using \code{grepl})
+#' @param match_longest character vector of regex which for which lines which
+#'   were already matched should be matched again when they are pasted with
+#'   additional lines. In consequence, this continuously checks whether adding a
+#'   new line generates a new match and prefers this longer match over the
+#'   previous match. Defaults to an empty character vector which excludes
+#'   already matched lines from being matched later on. This is used selectively
+#'   because for most stage regex, this might lead to a vast number of
+#'   mismatches whereas in others, this might be beneficial. Terminology is
+#'   based on the "longest" expression in the Corpus Workbench's CQP language.
 #' @export paste_and_match
 #' @examples
 #' x <- c(
@@ -167,8 +177,9 @@ paragraphize <- function(x,
 #'   )
 #' y <- paste_and_match(x, regex = c(yeah = "^\\(.*?\\)$"), n_lines = 2L)
 #' y <- paste_and_match(x, regex = c(yeah = "^\\(.*?\\)$"), n_lines = 2L, mismatch = "goes crazy")
-paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
+paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character(), match_longest = character()){
   
+  if (length(match_longest > 0L)) stop("match_longest is currently very experimental and causes lines to disappear. Do not use.")
   if (!is.character(x)) stop("x needs to be a character vector")
   if (is.null(names(x))) names(x) <- rep("", times = length(x))
   if (!is.character(regex)) stop("regex needs to be a character vector")
@@ -177,12 +188,22 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
   if (length(x) < n_lines) n_lines <- length(x)
   if (!is.character(mismatch)) stop("mismatch needs to be a character vector")
   
+  n_orig <- length(x)
+  
   for (i in 1L:n_lines){
     for (regexID in 1L:length(regex)){
       if (i == 1L){
         collapsed <- x
       } else {
-        if (length(x) > 1L){
+        if (length(x) > 1L & length(x) > (i - 1)) {
+
+          # Note: length(x) > (i - 1) seems to be necessary because when a
+          # previously concatenated string is kept, this might result in the
+          # length of x being smaller than n_lines - 1 in a given chunk. In
+          # consequence, the second part of j:(length(x) - (i - j)) becomes
+          # negative which results in an error. Note that this might mask
+          # unexpectedly long concatenations.
+
           vecs <- sapply(1L:i, function(j) x[j:(length(x) - (i - j))])
           if (!is.matrix(vecs)) vecs <- matrix(data = vecs, nrow = 1)
           collapsed <- apply(vecs, 1, function(v) paste0(v, collapse = " "))
@@ -192,17 +213,31 @@ paste_and_match <- function(x, regex, n_lines = 2L, mismatch = character()){
       }
 
       matches <- grep(regex[regexID], collapsed, perl = TRUE)
+
       for (m in mismatch) matches <- matches[!grepl(m, collapsed[matches], perl = TRUE)]
 
       # the loop above matches the entire line (in contrast to  the functionality in
       # get_chunk_data() which only looks into the who slot)
 
       for (m in rev(matches)){
-        if (all(names(x)[m:(m + i - 1L)] == "")){
+
+        if (length(match_longest) > 0L & names(regex)[regexID] %in% match_longest) {
+
+          # Note: This does not fully work yet because of a mismatch between "x"
+          # and "collapsed" which results in overwriting lines.
+
           x[m] <- collapsed[m]
           names(x)[m] <- names(regex)[regexID]
-          if (i > 1L) x <- x[-((m + 1L):(m + i - 1L))] 
+          if (i > 1L) x <- x[-((m + 1L):(m + i - 1L))]
+
+        } else {
+
+        if (all(names(x)[m:(m + i - 1L)] == "")) {
+          x[m] <- collapsed[m]
+          names(x)[m] <- names(regex)[regexID]
+          if (i > 1L) x <- x[-((m + 1L):(m + i - 1L))]
         }
+      }
       }
     }
   }

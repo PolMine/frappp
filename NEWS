@@ -1,5 +1,10 @@
 v0.4.1.9012
 ============
+* `make_speaker_node()`: Changed the format of running IDs for utterances and segments for ParlaMint to account for days on which more than one session takes place
+* `make_body()`: added possibility to split collapsed agenda item types for ParlaMint
+
+v0.4.1.9012
+============
 * `make_speaker_node()`: minor changes to the stage annotation for ParlaMint (removed surrounding parentheses and renamed the stage nodes as "stage" instead of "vocal")
 * `make_body()`: minor changes to the way agenda items are annotated for ParlaMint
 

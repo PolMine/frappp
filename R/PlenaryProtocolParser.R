@@ -234,30 +234,29 @@ PlenaryProtocolParser <- R6Class(
       
       invisible(self)
     },
-    
-    
+
     preprocessing = function(replacements = list(c("[\025]", "\u00A7"), c("\u00A0", " "), c("\a", "\n"))){
-      
+
       # remove empty lines
       emptyLines <- grep("^\\s*$", self$txt)
       if (length(emptyLines) > 0) self$txt <- self$txt[-emptyLines]
-      
+
       # remove leading and trailing whitespace
       self$txt <- gsub("^\\s*(.*)\\s*$", "\\1", self$txt)
-      
+
       # carry out replacements
       for (replacement in replacements){
         self$txt <- gsub(replacement[1], replacement[2], self$txt)
       }
-      
+
       # execute document-specific preprocessing functions
       if (self$id %in% names(self$preprocessing_functions)){
         self$txt <- self$preprocessing_functions[[self$id]](self$txt)
       }
-      
+
       invisible(self)
     },
-    
+
     add_metadata = function(metadata){
       if (is.null(names(metadata))) stop("the input character vector needs to be named")
       if (any(names(metadata) == "")) stop("all elements of the character vector need to be named")
@@ -265,17 +264,17 @@ PlenaryProtocolParser <- R6Class(
       self$metadata <- c(self$metadata, metadata)
       invisible(self)
     },
-    
-    
+
+
     get_metadata = function(){
       warning("needs to be implemented for specific protocol types")
     },
-    
-    
+
+
     get_debate = function(){
       warning("needs to be implemented for specific protocol types")
     },
-    
+
     get_chunk_data = function(){
       match_tables <- lapply(
         names(self$speaker_regex),
@@ -290,11 +289,11 @@ PlenaryProtocolParser <- R6Class(
             match_df <- self$speaker_regex[[speaker_regex_type]][["fn"]](df2)
             match_df[["index"]] <- df2[["index"]]
             match_df[["regex"]] <- speaker_regex_type
-            
+
             if (is.numeric(self$speaker_maximum_nchar_name)){
               match_df <- match_df[which(nchar(match_df[,"who"]) <= self$speaker_maximum_nchar_name),]
             }
-            
+
             return(match_df)
           } else {
             return(NULL)
@@ -302,14 +301,14 @@ PlenaryProtocolParser <- R6Class(
         }
       )
       match_table <- do.call(rbind, match_tables)
-      
+
       if (is.null(match_table)) warning("match_table is NULL - none of the regular expression matches")
-      
+
       checked_matches <- which(!match_table[["who"]] %in% self$speaker_mismatch)
       if (length(checked_matches) != nrow(match_table)) match_table <- match_table[checked_matches,]
-      
+
       match_table <- match_table[order(match_table[["index"]]),]
-      
+
       # remove multiple matches for regexes
       self$chunk_data <- plyr::ddply(.data = match_table, .variables = "index", .fun = function(df){
         if (nrow(df) > 1){
@@ -322,8 +321,8 @@ PlenaryProtocolParser <- R6Class(
       })
       invisible(self)
     },
-    
-    
+
+
     detect_speaker_regex_matches = function(speaker_mismatch = NULL){
       self$txt <- paste_and_match(
         x = self$txt,
@@ -347,23 +346,28 @@ PlenaryProtocolParser <- R6Class(
 
       invisible(self)
     },
-    
-    
-    detect_stage_regex_matches = function(){
+
+    # 2025-08: Introduced the parameter "match_longest". If not empty, this
+    # should continue matching stage expressions even if an expression was
+    # already matched based on less stage n lines for regular expressions with
+    # the provided name. Named after the CWB terminology used for CQP queries.
+
+    detect_stage_regex_matches = function(match_longest = character()){
       self$chunks <- lapply(
         self$chunks,
         function(chunk){
           paste_and_match(
             x = chunk, regex = self$stage_regex,
             n_lines = if (is.null(self$stage_match_n_lines)) 1L else self$stage_match_n_lines,
-            mismatch = self$stage_mismatch_regex
+            mismatch = self$stage_mismatch_regex,
+            match_longest = match_longest
           )
         }
       )
       invisible(self)
     },
-    
-    
+
+
     split_by_speakers = function(speaker_mismatch = NULL){
       
       # The first step is to get the indices of the vector where a call to a speaker occurs.
@@ -371,12 +375,11 @@ PlenaryProtocolParser <- R6Class(
       # index positions. Two checks are performed: (a) If the match for the name of the
       # speaker exceeds 'maxLengthWho', the match is discarded. (b) Matches that are 
       # included in the field 'speaker_mismatch' are discarded, too.
-      
-      
+  
       self$detect_speaker_regex_matches(speaker_mismatch = speaker_mismatch)
       names(self$txt) <- rep("", times = length(self$txt))
       self$get_chunk_data()
-      
+  
       # Intermediate step: We get the indices with the start paragraphs from the
       # data.frame in chunk_data. We ensure that the last element of the vector
       # is the last line in self$txt
@@ -385,7 +388,7 @@ PlenaryProtocolParser <- R6Class(
       if (start_paras[length(start_paras)] != length(self$txt)){
         start_paras <- c(start_paras, length(self$txt))
       }
-      
+
       # Finally, the raw character vector is chunked, i.e. it is turned into a list
       # with sections of speech of one speaker that has been identified.
 
@@ -393,6 +396,7 @@ PlenaryProtocolParser <- R6Class(
         1L:length(self$txt), breaks = start_paras,
         include.lowest = TRUE, right = FALSE
       )
+
       self$chunks <- split(self$txt, paras_speeches_factor)
       names(self$chunks) <- self$chunk_data[["regex"]][1L:length(self$chunks)]
 
@@ -540,8 +544,7 @@ PlenaryProtocolParser <- R6Class(
       topicCallDf <- do.call(rbind, matchesForTopicCall)
       invisible(topicCallDf)
     },
-    
-    
+
     make_speaker_node = function(chunk_no, parent){
       lines <- self$chunks[[chunk_no]]
       
@@ -562,7 +565,20 @@ PlenaryProtocolParser <- R6Class(
       
       if (self$output_format == "ParlaMint") {
         newSpeakerNode <- xml_add_child(.x = parent, .value = "u") # 2022-10: from sp to u
-        speakerAttrs[["id"]] <- sprintf("%s_%s.u%s", self$metadata$corpus_name, self$metadata$date, chunk_no)
+
+        # 2025-07: for the segment id we need legislative period and session
+        # number as well.
+
+        legislative_period <- sprintf("%02d", self$metadata$legislativePeriod)
+        session_no <- sprintf("%03d", self$metadata$sessionNo)
+
+        speakerAttrs[["id"]] <- sprintf("%s_%s-%s-%s.u%s",
+                                        self$metadata$corpus_name,
+                                        self$metadata$date,
+                                        legislative_period,
+                                        session_no,
+                                        chunk_no)
+
       } else {
         newSpeakerNode <- xml_add_child(.x = parent, .value = "sp")
       }
@@ -571,7 +587,7 @@ PlenaryProtocolParser <- R6Class(
 
       # The speaker call is not necessarily present (e.g. when chunks are
       # extracted from XML) And mismatches do lead to semicolons.
-      
+  
       if (grepl(":|;", lines[1])){
         split <- stri_match_all_regex(str = lines[1], pattern = "^\\s*(.*?[:;])\\s*(.*)\\s*$")[[1]]
         lines[1] <- split[1,3]
@@ -596,8 +612,24 @@ PlenaryProtocolParser <- R6Class(
                 # account for missing parentheses, these are removed
                 # individually.
 
-                if (grepl("^\\(", lines_mod)) lines_mod <- gsub("^\\(", "", lines_mod)
-                if (grepl("\\)$", lines_mod)) lines_mod <- gsub("\\)$", "", lines_mod)
+                # Some interjections do not start with a parenthesis at all
+                # (especially editorial remarks in protocols). We only remove
+                # parentheses if they start AND end with parentheses.
+
+                if (grepl("^\\s*\\(.*\\)\\s*$", lines_mod)) {
+
+                  if (grepl("^\\(", lines_mod)) lines_mod <- gsub("^\\(", "", lines_mod)
+
+                  # If this is a reference to a footnote which intentionally has
+                  # only one trailing parenthesis, do not remove this
+                  # parenthesis. (This is somewhat redundant to the check above
+                  # and kept here for now for debugging purposes)
+
+                  if (!grepl("^\\s*(\\*+|\\d+)\\)\\s*$", lines_mod)) {
+                    if (grepl("\\)$", lines_mod)) lines_mod <- gsub("\\)$", "", lines_mod) 
+                  }
+
+                }
 
                 xml_add_child(new_stage_node, .value = "desc", lines_mod)
               } else {
@@ -606,7 +638,18 @@ PlenaryProtocolParser <- R6Class(
             } else if (lines[i] != ""){
               if (self$output_format == "ParlaMint") {
                 new_segment_node <- xml_add_child(newSpeakerNode, .value = "seg", lines[i]) # from p to seg
-                xml2::xml_attr(new_segment_node, "id") <- sprintf("%s_%s.seg%s", self$metadata$corpus_name, self$metadata$date, self$segment_counter)
+
+                legislative_period <- sprintf("%02d", self$metadata$legislativePeriod)
+                session_no <- sprintf("%03d", self$metadata$sessionNo)
+
+                segment_node_id <- sprintf("%s_%s-%s-%s.seg%s",
+                                           self$metadata$corpus_name,
+                                           self$metadata$date,
+                                           legislative_period,
+                                           session_no,
+                                           self$segment_counter)
+
+                xml2::xml_attr(new_segment_node, "id") <- segment_node_id
                 self$segment_counter <- self$segment_counter + 1
               } else {
                 xml_add_child(newSpeakerNode, .value = "p", lines[i])
@@ -616,7 +659,16 @@ PlenaryProtocolParser <- R6Class(
             if (self$output_format == "ParlaMint") {
               if (lines[i] != "") {
                 new_segment_node <- xml_add_child(newSpeakerNode, .value = "seg", lines[i])
-                xml2::xml_attr(new_segment_node, "id") <- sprintf("%s_%s.seg%s", self$metadata$corpus_name, self$metadata$date, self$segment_counter)
+
+                segment_node_id <- sprintf("%s_%s-%s-%s.seg%s",
+                                           self$metadata$corpus_name,
+                                           self$metadata$date,
+                                           legislative_period,
+                                           session_no,
+                                           self$segment_counter)
+                
+                xml2::xml_attr(new_segment_node, "id") <- segment_node_id
+
                 self$segment_counter <- self$segment_counter + 1
               }
             } else {
@@ -627,14 +679,14 @@ PlenaryProtocolParser <- R6Class(
       )
       invisible(type)
     },
-    
-    
+
+
     make_speaker_nodes = function(chunk_nos, parent){
       lapply(chunk_nos, function(i) self$make_speaker_node(chunk_no = i, parent = parent))
       invisible(self)
     },
-    
-    
+
+
     make_header = function(template = system.file("xml", "teiTemplate.xml", package = "frappp")){
       self$xml <- xml2::read_xml(template)
       lapply(
@@ -647,8 +699,8 @@ PlenaryProtocolParser <- R6Class(
         })
       invisible(self)
     },
-    
-    
+
+
     make_body = function(){
       bodyNode <- xml2::xml_find_first(x = self$xml, xpath = "/TEI/text/body")
       if (is.null(self$agenda_item_regex)){ # annotate agenda items if regex present
@@ -681,13 +733,26 @@ PlenaryProtocolParser <- R6Class(
           1L:length(agendaItemChunks),
           function(i){
             if (self$output_format == "ParlaMint") {
+
+              n_agenda_item <- names(agendaItemChunks)[i]
+
               newAgendaItemNode <- xml_add_child(.x = bodyNode,
                                                  .value = "div",
-                                                 type = "debateSection", # the type is fixed in ParlaMint
-                                                 n = names(agendaItemChunks)[i])
+                                                 type = "debateSection") # the type is fixed in ParlaMint
 
-              if (!is.na(unname(topicCallDf[i, "type"]))) {
-                xml2::xml_attr(newAgendaItemNode, attr = "ana") <- paste0("#", unname(topicCallDf[i, "type"]))
+              # avoid NULL in this attribute.
+              if (!is.null(n_agenda_item)) xml2::xml_attr(newAgendaItemNode, "n") <- n_agenda_item
+
+              if (!is.na(unname(topicCallDf[i, "type"])) & topicCallDf[i, "type"] != "") {
+
+                # Update 2025-07: If we allow multiple types which might be
+                # collapsed, we "uncollapse" them for ParlaMint.
+
+                type_vector <- unname(topicCallDf[i, "type"])
+                type_vector <- unlist(strsplit(type_vector, split = "\\|"))
+                type_vector <- paste(paste0("#", unique(type_vector)), collapse = " ")
+
+                xml2::xml_attr(newAgendaItemNode, attr = "ana") <- type_vector
               }
 
               # the <div> has only the attribute of "type" in ParlaMint. Any
